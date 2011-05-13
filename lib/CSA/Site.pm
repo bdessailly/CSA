@@ -81,7 +81,9 @@ sub add_residue {
     $csa_site->site_number( '1' );
     
   CSA::Site::site_number gets the site number string as argument for
-  assignment. Always returns the site number string or undef.
+  assignment. Always returns the site number string or undef. The 
+  site number must be an integer. If that is not the case, a warning
+  is issued and the site_number is not set.
 
 =cut
 sub site_number {
@@ -93,9 +95,9 @@ sub site_number {
     $csa_site->evidence( 'PSIBLAST' );
     
   CSA::Site::evidence gets the site evidence string as argument for
-  assignment. Always returns the site evidence string or undef. The
-  site evidence can take either one of two values: 'PSIBLAST' or 
-  'LITERATURE'.
+  assignment. Always returns the site evidence string or undef. No 
+  verification is performed on the contents of the site evidence 
+  string but standard values would be 'PSIBLAST' or 'LITERATURE'.
 
 =cut
 sub evidence {
@@ -108,7 +110,10 @@ sub evidence {
     
   CSA::Site::literature_entry gets the related literature entry 
   string as argument for assignment. Always returns the related 
-  literature entry string or undef.
+  literature entry string or undef. The literature entry must be a 
+  string consisting of 4 or 5 alphanumeric characters. If that is 
+  not the case, a warning is issued and the literature_entry is not
+  set. 
 
 =cut
 sub literature_entry {
