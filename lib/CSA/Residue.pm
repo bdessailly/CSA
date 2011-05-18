@@ -3,6 +3,8 @@ package CSA::Residue;
 use warnings;
 use strict;
 
+use Carp;
+
 =head1 NAME
 
 CSA::Residue - CSA residue object representation. 
@@ -46,7 +48,18 @@ our $VERSION = '0.01';
 
 =cut
 sub new {
-
+    my $class = shift;
+    
+    my $self = {};
+    
+    $self->{CHAIN_ID}          = '';
+    $self->{CHEMICAL_FUNCTION} = '';
+    $self->{RESIDUE_NUMBER}    = '';
+    $self->{RESIDUE_TYPE}      = '';
+    
+    bless( $self, $class );
+    
+    return $self;
 }
 
 =head2 residue_type
@@ -54,11 +67,28 @@ sub new {
     $csa_res->residue_type( 'HIS' );
     
   CSA::Residue::residue_type gets the residue type string as argument
-  for assignment. Always returns the residue type string or undef.
+  for assignment. Always returns the residue type string or undef. 
+  The residue type must be an alphanumeric string. If that is not the
+  case, a warning is issued and the residue type is not set.
 
 =cut
 sub residue_type {
-
+    my $self = shift;
+    my $val  = shift;
+    
+    if ( defined $val ) {
+        
+        ## Accepted formats are alphanumeric strings.
+        if ( $val =~ /^\w+$/ ) {
+            $self->{RESIDUE_TYPE} = $val;
+        }
+        else {
+            carp "Warning: residue_type not assigned due to wrong ",
+                 "format ($val).";
+        }
+    }
+    
+    return $self->{RESIDUE_TYPE};
 }
 
 =head2 chain_id
@@ -66,11 +96,29 @@ sub residue_type {
     $csa_res->chain_id( 'A' );
     
   CSA::Residue::chain_id gets the chain ID string as argument for 
-  assignment. Always returns the chain ID string or undef.
+  assignment. Always returns the chain ID string or undef. The 
+  chain ID must be a single alphanumeric character or an empty 
+  space. If that is not the case, a warning is issued and the chain 
+  ID is not set.
 
 =cut
 sub chain_id {
+    my $self = shift;
+    my $val  = shift;
+    
+    if ( defined $val ) {
 
+        ## Accepted format is a single alphanumeric character.
+        if ( $val =~ /^\w*$/ ) {
+            $self->{CHAIN_ID} = $val;
+        }
+        else {
+            carp "Warning: chain_id not assigned due to wrong ",
+                 "format ($val).";
+        }
+    }
+    
+    return $self->{CHAIN_ID};
 }
 
 =head2 residue_number
@@ -79,11 +127,28 @@ sub chain_id {
     
   CSA::Residue::residue_number gets the residue number string as 
   argument for assignment. Always returns the residue number string 
-  or undef.
+  or undef. The residue number must be an integer (positive or 
+  negative). If that is not the case, a warning is issued and the 
+  residue number is not set.
 
 =cut
 sub residue_number {
-
+    my $self = shift;
+    my $val  = shift;
+    
+    if ( defined $val ) {
+        
+        ## accepted format are integers.
+        if ( $val =~ /^-*\d+$/ ) {
+            $self->{RESIDUE_NUMBER} = $val;
+        }
+        else {
+            carp "Warning: residue_number not assigned due to ",
+                 "wrong format ($val).";
+        }
+    }
+    
+    return $self->{RESIDUE_NUMBER};
 }
 
 =head2 chemical_function
@@ -92,11 +157,28 @@ sub residue_number {
     
   CSA::Residue::chemical_function gets the chemical function string 
   as argument for assignment. Always returns the chemical function 
-  string or undef.
+  string or undef. The chemical function must be a string of 
+  alphanumeric characters. If that is not the case, a warning is 
+  issued and the chemical function is not set.
 
 =cut
 sub chemical_function {
-
+    my $self = shift;
+    my $val  = shift;
+    
+    if ( defined $val ) {
+        
+        ## accepted formats are alphanumeric strings.
+        if ( $val =~ /^\w+$/ ) {
+            $self->{CHEMICAL_FUNCTION} = $val;
+        }
+        else {
+            carp "Warning: chemical_function not assigned due to ",
+                 "wrong format ($val).";
+        }
+    }
+    
+    return $self->{CHEMICAL_FUNCTION};
 }
 
 =head1 AUTHOR

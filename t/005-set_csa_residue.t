@@ -6,6 +6,7 @@
 ##
 ##    Created by Benoit H Dessailly, 2011-05-13.
 ##    Updated, 2011-05-13.
+##    Updated, 2011-05-17.
 ##
 ######################################################################
 
@@ -50,29 +51,29 @@ is(
 );
 
 ## Test residue_type attribute method.
-my @res_types = qw( 'RES' 'THR' 'ASP' 'PRO' 'A' 'ZN' '?' '' );
+my @res_types = ( 'RES', 'THR', 'ASP', 'PRO', 'A', 'ZN', '?', '' );
 for my $res_type ( @res_types ) {
-    set_res_type( $csares_oo, $res_type );
+    set_res_type( $res_type );
 }
 
 ## Test chain_id attribute method.
-my @chain_ids = qw( 'A' 'B' 'Z' '0' '1' 'POEKD' '?' '' );
+my @chain_ids = ( 'A', 'B', 'Z', '0', '1', 'POEKD', '?', '' );
 for my $chid ( @chain_ids ) {
-    set_chain_id( $csares_oo, $chid );
+    set_chain_id( $chid );
 }
 
 ## Test residue_number attribute method.
 my @res_nums 
-    = qw( '1234' '34' '94' '0' '-63' '33-' 'POEKD' '?' '' '35A' );
+    = ( '1234', '34', '94', '0', '-63', '33-', 'POEKD', '?', '', '35A' );
 for my $res_num ( @res_nums ) {
-    set_res_num( $csares_oo, $res_num );
+    set_res_num( $res_num );
 }
 
 ## Test chemical_function attribute method.
 my @chem_funs 
-    = qw( 'N' 'O' 'NO' 'S' 'SN' 'SNO' 'SO' 'X' '?' '35A' '23' 'S*' );
+    = ( 'N', 'O', 'NO', 'S', 'SN', 'SNO', 'SO', 'X', '?', '35A', '23', 'S*' );
 for my $chem_fun ( @chem_funs ) {
-    set_chem_fun( $csares_oo, $chem_fun );
+    set_chem_fun( $chem_fun );
 }
 
 exit;
@@ -80,8 +81,9 @@ exit;
 ######################################################################
 ## Test set-behaviour of CSA::Residue::residue_type.
 sub set_res_type {
-    my $oo       = shift;
     my $res_type = shift;
+ 
+    my $oo = CSA::Residue->new();
 
     if ( $res_type =~ /^\w+$/ ) {
         $oo->residue_type( $res_type );
@@ -105,18 +107,16 @@ sub set_res_type {
             'Wrong residue type not set.',
         );
     }
-    
-    ## re-initialise residue type for next test.
-    $oo->residue_type( '' );
 }
 
 ######################################################################
 ## Test set-behaviour of CSA::Residue::chain_id.
 sub set_chain_id {
-    my $oo   = shift;
     my $chid = shift;
+ 
+    my $oo = CSA::Residue->new();
 
-    if ( $chid =~ /^\w{1}$/ ) {
+    if ( $chid =~ /^\w*$/ ) {
         $oo->chain_id( $chid );
         is(
             $oo->chain_id(),
@@ -138,16 +138,14 @@ sub set_chain_id {
             'Wrong chain_id not set.',
         );
     }
-    
-    ## re-initialise chain_id for next test.
-    $oo->chain_id( '' );
 }
 
 ######################################################################
 ## Test set-behaviour of CSA::Residue::residue_number.
 sub set_res_num {
-    my $oo      = shift;
     my $res_num = shift;
+ 
+    my $oo = CSA::Residue->new();
 
     if ( $res_num =~ /^-*\d+$/ ) {
         $oo->residue_number( $res_num );
@@ -171,16 +169,14 @@ sub set_res_num {
             'Wrong residue_number not set.',
         );
     }
-    
-    ## re-initialise residue_number for next test.
-    $oo->residue_number( '' );
 }
 
 ######################################################################
 ## Test set-behaviour of CSA::Residue::chemical_function.
 sub set_chem_fun {
-    my $oo       = shift;
     my $chem_fun = shift;
+ 
+    my $oo = CSA::Residue->new();
 
     if ( $chem_fun =~ /^\w+$/ ) {
         $oo->chemical_function( $chem_fun );
@@ -204,7 +200,4 @@ sub set_chem_fun {
             'Wrong chemical_function not set.',
         );
     }
-    
-    ## re-initialise chemical_function for next test.
-    $oo->chemical_function( '' );
 }

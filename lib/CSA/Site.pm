@@ -3,6 +3,8 @@ package CSA::Site;
 use warnings;
 use strict;
 
+use Carp;
+
 =head1 NAME
 
 CSA::Site - CSA site object representation. 
@@ -44,7 +46,18 @@ our $VERSION = '0.01';
 
 =cut
 sub new {
-
+    my $class = shift;
+    
+    my $self = {};
+    
+    $self->{RESIDUES}         = [];
+    $self->{SITE_NUMBER}      = '';
+    $self->{EVIDENCE}         = '';
+    $self->{LITERATURE_ENTRY} = '';
+    
+    bless( $self, $class );
+    
+    return $self;
 }
 
 =head2 residues
@@ -58,7 +71,23 @@ sub new {
 
 =cut
 sub residues {
+    my $self          = shift;
+    my $residues_aref = shift;
+    
+    if ( defined $residues_aref ) {
 
+        ## make sure all residues are CSA::Residue compliant.
+        for my $residue_oo ( @{ $residues_aref } ) {
+            if ( $residue_oo->isa( 'CSA::Residue' ) != 1 ) {
+                confess "Error: attempting to add non-CSA::Residue ",
+                        "compliant object into CSA::Site->residues";
+            }
+        }
+
+        $self->{RESIDUES} = $residues_aref;
+    }
+
+    return $self->{RESIDUES};
 }
 
 =head2 add_residue
@@ -73,7 +102,29 @@ sub residues {
 
 =cut
 sub add_residue {
+    my $self       = shift;
+    my $residue_oo = shift;
+    
+    if ( ! defined $residue_oo ) {
+        confess "Error: CSA::Site->add_residue expects an argument ",
+                "for assignment.";
+    }
 
+    if ( $residue_oo->isa( 'CSA::Residue' ) != 1 ) {
+        confess "Error: CSA::Site->add_residue only takes ",
+                "CSA::Residue compliant objects for assignment.";
+    }
+
+    my $before_add_count = scalar @{ $self->{RESIDUES} };
+    push( @{ $self->{RESIDUES} }, $residue_oo );
+    my $after_add_count  = scalar @{ $self->{RESIDUES} };
+    
+    if ( $after_add_count == $before_add_count + 1 ) {
+        return 1;
+    }
+    else {
+        return 0;
+    }
 }
 
 =head2 site_number
@@ -87,7 +138,20 @@ sub add_residue {
 
 =cut
 sub site_number {
-
+    my $self = shift;
+    my $val  = shift;
+    
+    if ( defined $val ) {
+        if ( $val =~ /^\d+$/ ) {
+            $self->{SITE_NUMBER} = $val;
+        }
+        else {
+            carp 'Warning: site_number not assigned due to wrong ',
+                 "format ($val).";
+        }
+    }
+    
+    return $self->{SITE_NUMBER};
 }
 
 =head2 evidence
@@ -101,7 +165,14 @@ sub site_number {
 
 =cut
 sub evidence {
-
+    my $self = shift;
+    my $val  = shift;
+    
+    if ( defined $val ) {
+        $self->{EVIDENCE} = $val;
+    }
+    
+    return $self->{EVIDENCE};
 }
 
 =head2 literature_entry
@@ -117,7 +188,22 @@ sub evidence {
 
 =cut
 sub literature_entry {
-
+    my $self = shift;
+    my $val  = shift;
+    
+    if ( defined $val ) {    
+        
+        ## Accepted formats are 4 or 5 alphanumeric characters.
+        if ( $val =~ /^\w{4,5}?$/ ) {
+            $self->{LITERATURE_ENTRY} = $val;
+        }
+        else {
+            carp 'Warning: literature_entry not assigned due to ',
+                 "wrong format ($val).";
+        }
+    }
+    
+    return $self->{LITERATURE_ENTRY};
 }
 
 =head1 AUTHOR

@@ -14,7 +14,7 @@ use warnings;
 
 use File::Basename;
 use FindBin qw( $Bin );
-use Test::More tests => 21;
+use Test::More tests => 22;
 use Test::Warn;
 
 use lib "${Bin}/../lib";
@@ -26,6 +26,12 @@ use CSA::Site;
 ## Test directory t/.
 my $t_dir = $Bin;
 
+## Test pdb id attribute method.
+my @pdb_ids = ( '1ile', '1zh0', '3cok', '1235k1kd', '?a2m', '' );
+for my $pdb_id ( @pdb_ids ) {
+    set_pdbid( $pdb_id );
+}
+
 my $csaentry_oo = CSA::Entry->new();
 
 ## Check pdb_id returns an empty string by default.
@@ -35,17 +41,11 @@ is(
     'PDB ID set to empty string by default.',
 );
 
-## Test pdb id attribute method.
-my @pdb_ids = qw( '1ile' '1zh0' '3cok' '1235k1kd' '?a2m'  '' );
-for my $pdb_id ( @pdb_ids ) {
-    set_pdbid( $csaentry_oo, $pdb_id );
-}
-
 ## Test sites method.
 my $csa_site1 = CSA::Site->new();
 my $csa_site2 = CSA::Site->new();
 my $csa_site3 = CSA::Site->new();
-my @csa_sites = qw( $csa_site1 $csa_site2 $csa_site3 );
+my @csa_sites = ( $csa_site1, $csa_site2, $csa_site3 );
 $csaentry_oo  = set_csa_sites( $csaentry_oo, \@csa_sites );
 
 ## Test add_site method.
@@ -58,13 +58,17 @@ exit;
 ######################################################################
 ## Test set-behaviour of CSA::Entry::pdb_id.
 sub set_pdbid {
-    my $oo     = shift;
     my $pdb_id = shift;
 
-    $oo->pdb_id( $pdb_id );
+    my $oo = CSA::Entry->new();
     
     if ( $pdb_id =~ /^\w{4}$/ ) {
-        is( $oo->pdb_id, $pdb_id, 'PDB ID properly set.' );
+        $oo->pdb_id( $pdb_id );
+        is( 
+            $oo->pdb_id, 
+            $pdb_id, 
+            'PDB ID properly set.' 
+        );
     }
     else {
         warning_is 
@@ -74,11 +78,12 @@ sub set_pdbid {
             "Warning: pdb_id not assigned due to wrong format ($pdb_id).",
             'Testing warning for pdb_id with wrong format.'
         ;
-        is( $oo->pdb_id, '', 'Wrong PDB ID not set.' );
+        is( 
+            $oo->pdb_id, 
+            '', 
+            'Wrong PDB ID not set.' 
+        );
     }
-    
-    ## re-initialise pdb id to empty string for next run.
-    $oo->pdb_id( '' );
 }
 
 ######################################################################
@@ -91,7 +96,7 @@ sub set_csa_sites {
     
     ## Check what is stored in sites() is an array ref.
     is( 
-        $oo->sites()->ref,
+        ref($oo->sites()),
         'ARRAY',
         'CSA::Entry::sites returns an array ref.',
     );
@@ -127,7 +132,7 @@ sub add_csa_site {
     
     ## Check site was properly added by checking CSA::Entry::sites.
     is( 
-        $oo->sites()->ref,
+        ref($oo->sites()),
         'ARRAY',
         "CSA::Entry::sites still returns aref after adding site.",
     );

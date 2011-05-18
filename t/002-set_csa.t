@@ -6,6 +6,7 @@
 ##
 ##    Created by Benoit H Dessailly, 2011-05-13.
 ##    Updated, 2011-05-13.
+##    Updated, 2011-05-16.
 ##
 #####################################################################
 
@@ -14,7 +15,8 @@ use warnings;
 
 use File::Basename;
 use FindBin qw( $Bin );
-use Test::More tests => 18;
+use Scalar::Util qw( blessed );
+use Test::More tests => 32;
 
 use lib "${Bin}/../lib";
 
@@ -37,7 +39,7 @@ for my $vnumber ( @vnumbers ) {
 my $csa_entry1 = CSA::Entry->new();
 my $csa_entry2 = CSA::Entry->new();
 my $csa_entry3 = CSA::Entry->new();
-my @csa_entries = qw( $csa_entry1 $csa_entry2 $csa_entry3 );
+my @csa_entries = ( $csa_entry1, $csa_entry2, $csa_entry3 );
 $csa_oo = set_csa_entries( $csa_oo, \@csa_entries );
 
 ## Test add_entry method.
@@ -70,7 +72,7 @@ sub set_csa_entries {
     ## Check what is stored (and returned) by CSA::entries is an 
     ## array ref.
     is( 
-        $oo->entries()->ref, 
+        ref($oo->entries()), 
         'ARRAY', 
         "CSA::entries returns an array ref.",
     );
@@ -102,7 +104,7 @@ sub add_csa_entry {
     
     ## Check entry was properly added by checking CSA::entries.
     is( 
-        $oo->entries()->ref,
+        ref($oo->entries()),
         'ARRAY',
         "CSA::entries still returns aref after adding entry.",
     );
@@ -124,6 +126,17 @@ sub entries_elements {
     my $oo = shift;
     
     for my $csa_entry( @{ $oo->entries } ) {
+    	ok(
+    	    defined $csa_entry,
+    	    'Object in CSA::entries is defined.',
+    	);
+    	
+    	is(
+    	    blessed $csa_entry,
+    	    'CSA::Entry',
+    	    'Variable is a blessed reference from CSA::Entry',
+    	);
+    	
         ok(
             $csa_entry->isa( 'CSA::Entry' ), 
             "Objects in CSA::entries are CSA::Entry compliant.",

@@ -6,6 +6,8 @@
 ##
 ##    Created by Benoit H Dessailly, 2011-05-13.
 ##    Updated, 2011-05-13.
+##    Updated, 2011-05-16.
+##    Updated, 2011-05-17.
 ##
 ######################################################################
 
@@ -14,7 +16,7 @@ use warnings;
 
 use File::Basename;
 use FindBin qw( $Bin );
-use Test::More tests => 32;
+use Test::More tests => 37;
 use Test::Warn;
 
 use lib "${Bin}/../lib";
@@ -46,29 +48,29 @@ is(
 );
 
 ## Test site_number attribute method.
-my @site_numbers = qw( '0' '1' '2' '3' 'A' 'A902' '?' );
+my @site_numbers = ( '0', '1', '2', '3', 'A', 'A902', '?' );
 for my $site_number( @site_numbers ) {
-    set_site_number( $csasite_oo, $site_number );
+    set_site_number( $site_number );
 }
 
 ## Test evidence attribute method.
 my @evidence_strings 
-    = qw( 'PSIBLAST' 'LIT' 'LITERATURE' 'RANDOM' '?EXDCE£$' );
+    = ( 'PSIBLAST', 'LIT', 'LITERATURE', 'RANDOM', '?EXDCE£$' );
 for my $evidence ( @evidence_strings ) {
     set_evidence( $csasite_oo, $evidence );
 }
 
 ## Test literature_entry attribute method.
-my @lit_entries = qw( '1ileA' '1f7uA' '?cdap' ' ed ' '3cka' );
+my @lit_entries = ( '1ileA', '1f7uA', '?cdap', ' ed ', '3cka' );
 for my $lit_entry ( @lit_entries ) {
-    set_litentry( $csasite_oo, $lit_entry );
+    set_litentry( $lit_entry );
 }
 
 ## Test residues method.
 my $csa_res1 = CSA::Residue->new();
 my $csa_res2 = CSA::Residue->new();
 my $csa_res3 = CSA::Residue->new();
-my @csa_residues = qw( $csa_res1 $csa_res2 $csa_res3 );
+my @csa_residues = ( $csa_res1, $csa_res2, $csa_res3 );
 $csasite_oo = set_csa_residues( $csasite_oo, \@csa_residues );
 
 ## Test add_residue method.
@@ -81,9 +83,10 @@ exit;
 ######################################################################
 ## Test set-behaviour of CSA::Site::site_number.
 sub set_site_number {
-    my $oo          = shift;
     my $site_number = shift;
  
+    my $oo = CSA::Site->new();
+    
     if ( $site_number =~ /^\d+$/ ) {
         $oo->site_number( $site_number );
         is(
@@ -106,9 +109,6 @@ sub set_site_number {
             'Wrong site number not set.',
         );
     }
-    
-    ## re-initialise site number for next test.
-    $oo->site_number( '' );
 }
 
 ######################################################################
@@ -129,10 +129,11 @@ sub set_evidence {
 ######################################################################
 ## Test set-behaviour of CSA::Site::literature_entry.
 sub set_litentry {
-    my $oo        = shift;
     my $lit_entry = shift;
     
-    if ( $lit_entry =~ /^\w{4}\w?$/ ) {
+    my $oo = CSA::Site->new();
+
+    if ( $lit_entry =~ /^\w{4,5}?$/ ) {
         $oo->literature_entry( $lit_entry );
         is(
             $oo->literature_entry(),
@@ -154,9 +155,6 @@ sub set_litentry {
             'Wrong literature_entry not set.',
         );
     }
-    
-    ## re-initialise literature entry for next test.
-    $oo->literature_entry( '' );
 }
 
 ######################################################################
@@ -169,7 +167,7 @@ sub set_csa_residues {
     
     ## Check what is stored in residues() is an array ref.
     is( 
-        $oo->residues()->ref,
+        ref($oo->residues()),
         'ARRAY',
         'CSA::Site::residues returns an array ref.',
     );
@@ -205,7 +203,7 @@ sub add_csa_residue {
     
     ## Check residue was properly added by checking CSA::Site::residues.
     is( 
-        $oo->residues()->ref,
+        ref($oo->residues()),
         'ARRAY',
         "CSA::Site::residues still returns aref after adding residue.",
     );

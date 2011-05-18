@@ -3,6 +3,8 @@ package CSA;
 use warnings;
 use strict;
 
+use Carp;
+
 =head1 NAME
 
 CSA - Catalytic Site Atlas dataset object representation. 
@@ -50,7 +52,16 @@ Also, 'perldoc CSA::IO' for more details on how to use CSA::IO.
 
 =cut
 sub new {
-
+    my $class = shift;
+    
+    my $self = {};
+    
+    $self->{ENTRIES}        = [];
+    $self->{VERSION_NUMBER} = '';
+    
+    bless( $self, $class );
+    
+    return $self;
 }
 
 =head2 entries
@@ -70,7 +81,23 @@ sub new {
 
 =cut
 sub entries {
+    my $self         = shift;
+    my $entries_aref = shift;
+    
+    if ( defined $entries_aref ) {
 
+        ## make sure all entries are CSA::Entry compliant.
+        for my $entry_oo ( @{ $entries_aref } ) {
+            if ( $entry_oo->isa( 'CSA::Entry' ) != 1 ) {
+                confess "Error: attempting to add non-CSA::Entry ",
+                        "compliant object into CSA->entries";
+            }
+        }
+
+        $self->{ENTRIES} = $entries_aref;
+    }
+
+    return $self->{ENTRIES};
 }
 
 =head2 version_number
@@ -82,7 +109,14 @@ sub entries {
 
 =cut
 sub version_number {
-
+    my $self = shift;
+    my $val  = shift;
+    
+    if ( defined $val ) {
+        $self->{VERSION_NUMBER} = $val;
+    }
+    
+    return $self->{VERSION_NUMBER};
 }
 
 =head2 add_entry
@@ -101,7 +135,29 @@ sub version_number {
 
 =cut
 sub add_entry {
-
+    my $self     = shift;
+    my $entry_oo = shift;
+    
+    if ( ! defined $entry_oo ) {
+        confess "Error: CSA->add_entry expects an argument for ",
+             "assignment.";
+    }
+    
+    if ( $entry_oo->isa( 'CSA::Entry' ) != 1 ) {
+        confess "Error: CSA->add_entry only takes CSA::Entry ",
+                "compliant objects for assignment.";
+    }
+    
+    my $before_add_count = scalar @{ $self->{ENTRIES} };
+    push( @{ $self->{ENTRIES} }, $entry_oo );
+    my $after_add_count  = scalar @{ $self->{ENTRIES} };
+    
+    if ( $after_add_count == $before_add_count + 1 ) {
+        return 1;
+    }
+    else {
+        return 0;
+    }
 }
 
 =head1 AUTHOR
