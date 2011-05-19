@@ -19,7 +19,7 @@ use File::Basename;
 use File::Spec;
 use FindBin qw( $Bin );
 use IO::File;
-use Test::More tests => 43;
+use Test::More tests => 120;
 
 use Switch;
 
@@ -121,23 +121,33 @@ sub check_csa_contents {
     for my $csa_entry ( @{ $csa->entries } ) {
 
         switch ( $csa_entry->pdb_id ) {
-            case '102l' { check_entry_102l($csa_entry) }
-            case '104l' { check_entry_104l($csa_entry) }
-            case '12as' { check_entry_12as($csa_entry) }
-            case '9rub' { check_entry_9rub($csa_entry) }
-            case '9xim' { check_entry_9xim($csa_entry) }
+            
+            ## 103l, 107l, 108l and 109l have the exact same 
+            ## properties as 102l so reusing same subroutine.
+            case '102l' { check_entry_102l($csa_entry, '102l') }
+            case '103l' { check_entry_102l($csa_entry, '103l') }
+            case '107l' { check_entry_102l($csa_entry, '107l') }
+            case '108l' { check_entry_102l($csa_entry, '108l') }
+            case '109l' { check_entry_102l($csa_entry, '109l') }
+            
+            case '104l' { check_entry_104l($csa_entry, '104l') }
+            case '10gs' { check_entry_10gs($csa_entry, '10gs') }
+            case '12as' { check_entry_12as($csa_entry, '12as') }
+            case '9rub' { check_entry_9rub($csa_entry, '9rub') }
+            case '9xim' { check_entry_9xim($csa_entry, '9xim') }
         }
     }
 }
 
 ######################################################################
-## Check contents of CSA entry 102l.
+## Check contents of CSA entry 102l, 103l
 sub check_entry_102l {
     my $csa_entry = shift;
+    my $pdb_id    = shift;
 
     is(
         scalar @{ $csa_entry->sites }, 1, 
-        'Correct #sites in entry 102l.',
+        "Correct #sites in entry $pdb_id.",
     );
     
     for my $csa_site ( @{ $csa_entry->sites } ) {
@@ -145,16 +155,26 @@ sub check_entry_102l {
             case '0' {
                 is(
                     $csa_site->evidence, 'PSIBLAST',
-                    'Correct evidence for 102l, site 0.',
+                    "Correct evidence for $pdb_id, site 0.",
                 );
                 is(
                     scalar @{ $csa_site->residues }, 2,
-                    'Correct #residues for 102l, site 0.',
+                    "Correct #residues for $pdb_id, site 0.",
                 );
                 is(
                     $csa_site->literature_entry, '206lA',
-                    'Correct literature entry for 102l, site 0.',
+                    "Correct literature entry for $pdb_id, site 0.",
                 );
+                for my $csa_res ( @{ $csa_site->residues } ) {
+                    switch ( $csa_res->residue_number ) {
+                        case '11' {
+                            check_csa_res($csa_res, 'GLU', 'A', 'S');
+                        }
+                        case '20' {
+                            check_csa_res($csa_res, 'ASP', 'A', 'S');
+                        }
+                    }
+                }
             }
         }
     }
@@ -164,10 +184,11 @@ sub check_entry_102l {
 ## Check contents of CSA entry 104l.
 sub check_entry_104l {
     my $csa_entry = shift;
+    my $pdb_id    = shift;
 
     is(
         scalar @{ $csa_entry->sites }, 2, 
-        'Correct #sites in entry 104l.',
+        "Correct #sites in entry $pdb_id.",
     );
 
     for my $csa_site ( @{ $csa_entry->sites } ) {
@@ -175,28 +196,19 @@ sub check_entry_104l {
             case '0' {
                 is( 
                     $csa_site->evidence, 'PSIBLAST',
-                    'Correct evidence for 104l, site 0.',
+                    "Correct evidence for $pdb_id, site 0.",
                 );
                 is(
                     scalar @{ $csa_site->residues }, 2, 
-                    'Correct #residues for 104l, site 0.',
+                    "Correct #residues for $pdb_id, site 0.",
                 );
-
                 for my $csa_res ( @{ $csa_site->residues } ) {
                     switch ( $csa_res->residue_number ) {
                       case '11' {
-                        is( 
-                            $csa_res->chemical_function, 'S',
-                            'Correct chemical function.',
-                        );
-                        is( 
-                            $csa_res->chain_id, 'A',
-                            'Correct chain ID.',
-                        );
-                        is( 
-                            $csa_res->residue_type, 'GLU',
-                            'Correct residue type.',
-                        );
+                        check_csa_res($csa_res, 'GLU', 'A', 'S');
+                      }
+                      case '20' {
+                        check_csa_res($csa_res, 'ASP', 'A', 'S');
                       }
                     }
                 }
@@ -204,12 +216,81 @@ sub check_entry_104l {
             case '1' {
                 is(
                     $csa_site->evidence, 'PSIBLAST',
-                    'Correct evidence for 104l, site 1.',
+                    "Correct evidence for $pdb_id, site 1.",
                 );
                 is(
                     scalar @{ $csa_site->residues }, 2,
-                    'Correct #residues for 104l, site 1.',
+                    "Correct #residues for $pdb_id, site 1.",
                 );
+                for my $csa_res ( @{ $csa_site->residues } ) {
+                    switch ( $csa_res->residue_number ) {
+                      case '11' {
+                        check_csa_res($csa_res, 'GLU', 'B', 'S');
+                      }
+                      case '20' {
+                        check_csa_res($csa_res, 'ASP', 'B', 'S');
+                      }
+                    }
+                }
+            }
+        }
+    }
+}
+
+######################################################################
+## Check contents of CSA entry 10gs
+sub check_entry_10gs {
+    my $csa_entry = shift;
+    my $pdb_id    = shift;
+
+    is(
+        scalar @{ $csa_entry->sites }, 2, 
+        "Correct #sites in entry $pdb_id.",
+    );
+    
+    for my $csa_site ( @{ $csa_entry->sites } ) {
+        switch ( $csa_site->site_number ) {
+            case '0' {
+                is(
+                    $csa_site->evidence, 'PSIBLAST',
+                    "Correct evidence for $pdb_id, site 0.",
+                );
+                is(
+                    scalar @{ $csa_site->residues }, 1,
+                    "Correct #residues for $pdb_id, site 0.",
+                );
+                is(
+                    $csa_site->literature_entry, '1oe8A',
+                    "Correct literature entry for $pdb_id, site 0.",
+                );
+                for my $csa_res ( @{ $csa_site->residues } ) {
+                    switch ( $csa_res->residue_number ) {
+                        case '7' {
+                            check_csa_res($csa_res, 'TYR', 'A', 'S');
+                        }
+                    }
+                }
+            }
+            case '1' {
+                is(
+                    $csa_site->evidence, 'PSIBLAST',
+                    "Correct evidence for $pdb_id, site 0.",
+                );
+                is(
+                    scalar @{ $csa_site->residues }, 1,
+                    "Correct #residues for $pdb_id, site 0.",
+                );
+                is(
+                    $csa_site->literature_entry, '1oe8A',
+                    "Correct literature entry for $pdb_id, site 0.",
+                );
+                for my $csa_res ( @{ $csa_site->residues } ) {
+                    switch ( $csa_res->residue_number ) {
+                        case '7' {
+                            check_csa_res($csa_res, 'TYR', 'B', 'S');
+                        }
+                    }
+                }
             }
         }
     }
@@ -219,10 +300,11 @@ sub check_entry_104l {
 ## Check contents of CSA entry 12as.
 sub check_entry_12as {
     my $csa_entry = shift;
+    my $pdb_id    = shift;
     
     is(
         scalar @{ $csa_entry->sites }, 3,
-        'Correct #sites in entry 12as.',
+        "Correct #sites in entry $pdb_id.",
     );
     
     for my $csa_site ( @{ $csa_entry->sites } ) {
@@ -230,49 +312,64 @@ sub check_entry_12as {
             case 'O' { 
                 is(
                     $csa_site->evidence, 'LIT',
-                    'Correct evidence for 12as, site 0.',
+                    "Correct evidence for $pdb_id, site 0.",
                 ); 
                 is(
                     scalar @{ $csa_site->residues }, 3,
-                    'Correct #residues for 12as, site 0.',
+                    "Correct #residues for $pdb_id, site 0.",
                 );
+                for my $csa_res ( @{ $csa_site->residues } ) {
+                    switch ( $csa_res->residue_number ) {
+                        case '46' {
+                            check_csa_res($csa_res, 'ASP', 'A', 'S');
+                        }   
+                        case '100' {
+                            check_csa_res($csa_res, 'ARG', 'A', 'S');
+                        }   
+                        case '116' {
+                            check_csa_res($csa_res, 'GLN', 'A', 'S');
+                        }   
+                    }
+                }
             }
             
             case '1' {
                 is(
                     $csa_site->evidence, 'LIT',
-                    'Correct evidence for 12as, site 0.',
+                    "Correct evidence for $pdb_id, site 0.",
                 );
                 is(
                     scalar @{ $csa_site->residues }, 3,
-                    'Correct #residues for 12as, site 1.',
+                    "Correct #residues for $pdb_id, site 1.",
                 );
+                for my $csa_res ( @{ $csa_site->residues } ) {
+                    switch ( $csa_res->residue_number ) {
+                        case '46' {
+                            check_csa_res($csa_res, 'ASP', 'B', 'S');
+                        }   
+                        case '100' {
+                            check_csa_res($csa_res, 'ARG', 'B', 'S');
+                        }   
+                        case '116' {
+                            check_csa_res($csa_res, 'GLN', 'B', 'S');
+                        }   
+                    }
+                }
             }
             
             case '2' {
                 is(
                     $csa_site->evidence, 'PSIBLAST',
-                    'Correct evidence for 12as, site 2.',
+                    "Correct evidence for $pdb_id, site 2.",
                 );
                 is(
                     scalar @{ $csa_site->residues }, 1,
-                    'Correct #residues for 12as, site 2.',
+                    "Correct #residues for $pdb_id, site 2.",
                 );
                 for my $csa_res ( @{ $csa_site->residues } ) {
                     switch ( $csa_res->residue_number ) {
                         case '125' {
-                            is(
-                                $csa_res->residue_type, 'CYS',
-                                'Correct residue type.',
-                            );
-                            is(
-                                $csa_res->chemical_function, 'S',
-                                'Correct chemical function.',
-                            );
-                            is(
-                                $csa_res->chain_id, 'A',
-                                'Correct chain ID.',
-                            );
+                            check_csa_res($csa_res, 'CYS', 'A', 'S');
                         }	
                     }
                 }
@@ -340,18 +437,7 @@ sub check_entry_9xim {
                 for my $csa_res ( @{ $csa_site->residues } ) {
                     switch ( $csa_res->residue_number ) {
                         case '220' {
-                            is(
-                                $csa_res->residue_type, 'HIS',
-                                'Correct residue type.',
-                            );
-                            is(
-                                $csa_res->chemical_function, 'S',
-                                'Correct chemical function.',
-                            );
-                            is(
-                                $csa_res->chain_id, 'A',
-                                'Correct chain ID.',
-                            );
+                            check_csa_res($csa_res, 'HIS', 'A', 'S');
                         }   
                     }
                 }
@@ -372,22 +458,38 @@ sub check_entry_9xim {
                 for my $csa_res ( @{ $csa_site->residues } ) {
                     switch ( $csa_res->residue_number ) {
                         case '57' {
-                            is(
-                                $csa_res->residue_type, 'ASP',
-                                'Correct residue type.',
-                            );
-                            is(
-                                $csa_res->chemical_function, 'S',
-                                'Correct chemical function.'
-                            );
-                            is(
-                                $csa_res->chain_id, 'D',
-                                'Correct chain ID.',
-                            );
+                            check_csa_res($csa_res, 'ASP', 'D', 'S');
                         }
                     }
                 }
             }
         }
     }
+}
+
+#####################################################################
+## Check CSA residue object properties.
+sub check_csa_res {
+    my $csa_res           = shift;
+    my $residue_type      = shift;
+    my $chain_id          = shift;
+    my $chemical_function = shift;
+    
+    is( 
+        $csa_res->residue_type, 
+        $residue_type, 
+        'Correct residue type.'
+    );
+        
+    is(
+        $csa_res->chain_id, 
+        $chain_id,
+        'Correct chain ID.',
+    );
+    
+    is(
+        $csa_res->chemical_function, 
+        $chemical_function,
+        'Correct chemical function.'
+    );
 }
