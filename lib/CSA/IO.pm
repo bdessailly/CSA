@@ -4,6 +4,7 @@ use warnings;
 use strict;
 
 use Carp;
+use Fcntl;
 use IO::File;
 
 use CSA;
@@ -90,8 +91,12 @@ sub read {
     ## Create CSA dataset object.
     my $csa_oo = CSA->new();
     
-    ## Skip CSA file header line.
+    ## Skip CSA file header line and go back to file start
+    ## if first line is not header.
     my $header_line = $arg{'csa_filehandle'}->getline;
+    if ( substr($header_line,0,6) ne 'PDB ID' ) {
+        $arg{'csa_filehandle'}->seek(0,SEEK_SET);
+    }
 
     ## Initialise control variables for reading CSA file. 
     my $previous_pdb_id      = '';
@@ -114,7 +119,7 @@ sub read {
         my $evidence          = $file_columns[6];
         my $literature_entry  = $file_columns[7];
         my $site_id           = $pdb_id . $site_number;
-
+        
         ## Skip unwanted PDB entries if required.
         next if ( scalar keys %pdb_ids != 0 && ! exists $pdb_ids{ $pdb_id } );
 
