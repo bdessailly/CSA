@@ -7,6 +7,7 @@
 ##    Created by Benoit H Dessailly, 2011-05-13.
 ##    Updated, 2011-05-13.
 ##    Updated, 2011-05-17.
+##    Updated, 2011-05-23.
 ##
 ######################################################################
 
@@ -28,25 +29,25 @@ my $t_dir = $Bin;
 
 my $csares_oo = CSA::Residue->new();
 
-## Check attribute methods return empty string by default.
+## Check attribute methods return undef by default.
 is(
     $csares_oo->residue_type(),
-    '',
+    undef,
     'residue_type set to empty space by default.', 
 );
 is(
     $csares_oo->chain_id(),
-    '',
+    undef,
     'chain_id set to empty space by default.', 
 );
 is(
     $csares_oo->residue_number(),
-    '',
+    undef,
     'residue_number set to empty space by default.', 
 );
 is(
     $csares_oo->chemical_function(),
-    '',
+    undef,
     'chemical_function set to empty space by default.', 
 );
 
@@ -103,7 +104,7 @@ sub set_res_type {
         ;
         is(
             $oo->residue_type(),
-            '',
+            undef,
             'Wrong residue type not set.',
         );
     }
@@ -134,7 +135,7 @@ sub set_chain_id {
         ;
         is(
             $oo->chain_id(),
-            '',
+            undef,
             'Wrong chain_id not set.',
         );
     }
@@ -165,7 +166,7 @@ sub set_res_num {
         ;
         is(
             $oo->residue_number(),
-            '',
+            undef,
             'Wrong residue_number not set.',
         );
     }
@@ -196,7 +197,7 @@ sub set_chem_fun {
         ;
         is(
             $oo->chemical_function(),
-            '',
+            undef,
             'Wrong chemical_function not set.',
         );
     }

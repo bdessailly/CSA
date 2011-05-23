@@ -8,6 +8,7 @@
 ##    Updated, 2011-05-13.
 ##    Updated, 2011-05-16.
 ##    Updated, 2011-05-17.
+##    Updated, 2011-05-23.
 ##
 ######################################################################
 
@@ -16,7 +17,9 @@ use warnings;
 
 use File::Basename;
 use FindBin qw( $Bin );
-use Test::More tests => 37;
+use Scalar::Util qw( blessed );
+use Test::Exception;
+use Test::More tests => 51;
 use Test::Warn;
 
 use lib "${Bin}/../lib";
@@ -33,18 +36,18 @@ my $csasite_oo = CSA::Site->new();
 ## Check attribute methods return empty string by default.
 is(
     $csasite_oo->site_number(),
-    '',
-    'site_number set to empty space by default.', 
+    undef,
+    'site_number set to undef by default.', 
 );
 is(
     $csasite_oo->evidence(),
-    '',
-    'evidence set to empty space by default.', 
+    undef,
+    'evidence set to undef by default.', 
 );
 is(
     $csasite_oo->literature_entry(),
-    '',
-    'literature_entry set to empty space by default.', 
+    undef,
+    'literature_entry set to undef by default.', 
 );
 
 ## Test site_number attribute method.
@@ -68,14 +71,30 @@ for my $lit_entry ( @lit_entries ) {
 
 ## Test residues method.
 my $csa_res1 = CSA::Residue->new();
+$csa_res1->residue_number( '217' );
+$csa_res1->chain_id( 'A' );
 my $csa_res2 = CSA::Residue->new();
+$csa_res2->residue_number( '333' );
+$csa_res2->chain_id( 'B' );
 my $csa_res3 = CSA::Residue->new();
+$csa_res3->residue_number( '1' );
+$csa_res3->chain_id( 'A' );
 my @csa_residues = ( $csa_res1, $csa_res2, $csa_res3 );
 $csasite_oo = set_csa_residues( $csasite_oo, \@csa_residues );
 
 ## Test add_residue method.
 my $csa_res4 = CSA::Residue->new();
+$csa_res4->residue_number( '76' );
+$csa_res4->chain_id( 'A' );
 add_csa_residue( $csasite_oo, $csa_res4 );
+
+## Test add_residues method with a residue whose residue_number 
+## and chain_id features are not defined.
+my $csa_res5 = CSA::Residue->new();
+add_wrong_csa_residue( $csasite_oo, $csa_res5 );
+
+## Test get_residue method.
+test_get_residue( $csasite_oo );
 
 exit;
 
@@ -105,7 +124,7 @@ sub set_site_number {
         ;
         is(
             $oo->site_number(),
-            '',
+            undef,
             'Wrong site number not set.',
         );
     }
@@ -151,7 +170,7 @@ sub set_litentry {
         ;
         is(
             $oo->literature_entry(),
-            '',
+            undef,
             'Wrong literature_entry not set.',
         );
     }
@@ -218,6 +237,37 @@ sub add_csa_residue {
     residues_elements( $oo );
 }
 
+
+#####################################################################
+## Test set-behaviour of CSA::Site::add_residue method when added 
+## residue has no defined Residue Number and/or Chain ID.
+sub add_wrong_csa_residue {
+    my $oo      = shift;
+    my $csa_res = shift;
+    
+    dies_ok 
+        { $oo->add_residue( $csa_res ) } 
+        'Dies when adding Res with no Res Number and Chain ID.'
+    ;
+    
+    ## Check residue was not added by checking CSA::Site::residues.
+    is( 
+        ref($oo->residues()),
+        'ARRAY',
+        'CSA::Site::residues still returns aref after not adding ' 
+        . 'residue.',
+    );
+    is(
+        scalar @{ $oo->residues() },
+        4,
+        "CSA::Site::residues contains 4 elements after adding one.",
+    );
+    
+    ## Check elements stored in array ref in CSA::Site::residues are 
+    ## CSA::Residue compliant objects.
+    residues_elements( $oo );
+}
+
 #####################################################################
 ## Check that elements that are stored in CSA::Site->residues are 
 ## CSA::Residue compliant.
@@ -230,4 +280,49 @@ sub residues_elements {
             'Object in CSA::Site->residues is CSA::Residue compliant.',
         );
     }
+}
+
+#####################################################################
+## Test get_residue method with different residue IDs.
+sub test_get_residue {
+    my $oo = shift;
+
+    ## Residue that was added to the site.
+    my $res1 = $oo->get_residue( '217A' );
+    ok( 
+        defined $res1,
+        'Residue with ID 217A is in site.',
+    );
+    is(
+        blessed $res1,
+        'CSA::Residue',
+        'Residue 217A is a blessed reference from CSA::Residue',
+    );
+    ok(
+        $res1->isa( 'CSA::Residue' ),
+        'Residue 217A is CSA::Residue compliant.',
+    );
+
+    ## Residue that was added to the site.
+    my $res2 = $oo->get_residue( '333B' );
+    ok( 
+        defined $res2,
+        'Residue with ID 333B is in site.',
+    );
+    is(
+        blessed $res2,
+        'CSA::Residue',
+        'Residue 333B is a blessed reference from CSA::Residue',
+    );
+    ok(
+        $res2->isa( 'CSA::Residue' ),
+        'Residue 333B is CSA::Residue compliant.',
+    );
+
+    ## Residue that was not added to the site.
+    my $res3 = $oo->get_residue( '592C' );
+    ok(
+        ! defined $res3,
+        'Residue 592C is not in site.',
+    );
 }

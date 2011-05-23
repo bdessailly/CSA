@@ -52,10 +52,10 @@ sub new {
     
     my $self = {};
     
-    $self->{CHAIN_ID}          = '';
-    $self->{CHEMICAL_FUNCTION} = '';
-    $self->{RESIDUE_NUMBER}    = '';
-    $self->{RESIDUE_TYPE}      = '';
+    $self->{CHAIN_ID}          = undef;
+    $self->{CHEMICAL_FUNCTION} = undef;
+    $self->{RESIDUE_NUMBER}    = undef;
+    $self->{RESIDUE_TYPE}      = undef;
     
     bless( $self, $class );
     

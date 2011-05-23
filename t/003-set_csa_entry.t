@@ -6,6 +6,7 @@
 ##
 ##    Created by Benoit H Dessailly, 2011-05-13.
 ##    Updated, 2011-05-13.
+##    Updated, 2011-05-23.
 ##
 ######################################################################
 
@@ -14,7 +15,9 @@ use warnings;
 
 use File::Basename;
 use FindBin qw( $Bin );
-use Test::More tests => 22;
+use Scalar::Util qw( blessed );
+use Test::Exception;
+use Test::More tests => 36;
 use Test::Warn;
 
 use lib "${Bin}/../lib";
@@ -34,23 +37,35 @@ for my $pdb_id ( @pdb_ids ) {
 
 my $csaentry_oo = CSA::Entry->new();
 
-## Check pdb_id returns an empty string by default.
+## Check pdb_id returns undef by default.
 is( 
     $csaentry_oo->pdb_id, 
-    '', 
-    'PDB ID set to empty string by default.',
+    undef, 
+    'PDB ID set to undef by default.',
 );
 
 ## Test sites method.
 my $csa_site1 = CSA::Site->new();
+$csa_site1->site_number( '0' );
 my $csa_site2 = CSA::Site->new();
+$csa_site2->site_number( '1' );
 my $csa_site3 = CSA::Site->new();
+$csa_site3->site_number( '2' );
 my @csa_sites = ( $csa_site1, $csa_site2, $csa_site3 );
 $csaentry_oo  = set_csa_sites( $csaentry_oo, \@csa_sites );
 
 ## Test add_site method.
 my $csa_site4 = CSA::Site->new();
+$csa_site4->site_number( '3' );
 add_csa_site( $csaentry_oo, $csa_site4 );
+
+## Test get_site method.
+test_get_site( $csaentry_oo );
+
+## Test add_site method with a site with no Site Number.
+my $csa_site5 = CSA::Site->new();
+add_wrong_csa_site( $csaentry_oo, $csa_site5 );
+
 
 exit;
 
@@ -80,7 +95,7 @@ sub set_pdbid {
         ;
         is( 
             $oo->pdb_id, 
-            '', 
+            undef, 
             'Wrong PDB ID not set.' 
         );
     }
@@ -148,6 +163,35 @@ sub add_csa_site {
 }
 
 #####################################################################
+## Test set-behaviour of CSA::Entry::add_site method when added site
+## has no defined Site Number.
+sub add_wrong_csa_site {
+    my $oo        = shift;
+    my $csa_site = shift;
+    
+    dies_ok 
+        { $oo->add_site( $csa_site ) } 
+        'Dies when adding Site with no Site Number.'
+    ;
+    
+    ## Check site was not added by checking CSA::Entry::sites.
+    is( 
+        ref($oo->sites()),
+        'ARRAY',
+        "CSA::Entry::sites still returns aref after adding site.",
+    );
+    is(
+        scalar @{ $oo->sites() },
+        4,
+        "CSA::Entry::sites contains 4 elements after adding one.",
+    );
+    
+    ## Check elements stored in array ref in CSA::Entry::sites are 
+    ## CSA::Site compliant objects.
+    sites_elements( $oo );
+}
+
+#####################################################################
 ## Check that elements stored in sites are CSA::Site compliant.
 sub sites_elements {
     my $oo = shift;
@@ -158,4 +202,49 @@ sub sites_elements {
             'Object in CSA::Entry->sites is CSA::Site compliant.',
         );
     }
+}
+
+#####################################################################
+## Test get_site method with different site numbers.
+sub test_get_site {
+    my $oo = shift;
+
+    ## Site that was added to the entry.
+    my $site1 = $oo->get_site( '0' );
+    ok( 
+        defined $site1,
+        'Site with Site Number 0 is in entry.',
+    );
+    is(
+        blessed $site1,
+        'CSA::Site',
+        'Site 0 is a blessed reference from CSA::Site',
+    );
+    ok(
+        $site1->isa( 'CSA::Site' ),
+        'Site 0 is CSA::Site compliant.',
+    );
+
+    ## Site that was added to the entry.
+    my $site2 = $oo->get_site( '1' );
+    ok( 
+        defined $site2,
+        'Site with Site Number 1 is in entry.',
+    );
+    is(
+        blessed $site2,
+        'CSA::Site',
+        'Site 1 is a blessed reference from CSA::Site',
+    );
+    ok(
+        $site2->isa( 'CSA::Site' ),
+        'Site 1 is CSA::Site compliant.',
+    );
+
+    ## Site that was not added to the entry.
+    my $site3 = $oo->get_site( '5' );
+    ok(
+        ! defined $site3,
+        'Site 5 is not in entry.',
+    );
 }

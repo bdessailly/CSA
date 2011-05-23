@@ -7,6 +7,8 @@ license  'perl';
 
 build_requires 'Test::More';
 
+requires 'Test::Exception' => '0.29';
+
 auto_install;
 
 WriteAll;

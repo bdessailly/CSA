@@ -25,16 +25,21 @@ our $VERSION = '0.01';
     ## Create a CSA site object.
     my $csa_site = CSA::Site->new();
     
-    ## Store CSA site residues.
+    ## Store CSA site residues (only residues with defined position 
+    ## and chain ID).
     $csa_site->residues( \@residues );
 
-    ## Add CSA site residue.
+    ## Add CSA site residue (only residues with defined position and
+    ## chain ID).
     $csa_site->add_residue( $csa_res );
     
     ## Set/Get CSA site attributes...
     $csa_site->site_number( '1' );
     $csa_site->evidence( 'PSIBLAST' );
     $csa_site->literature_entry( '1f7u' );
+    
+    ## Retrieve a specific residue by its position and chain ID).
+    my $csa_residue = $csa_site->get_residue( '217A' );
     
 =head1 SUBROUTINES/METHODS
 
@@ -50,81 +55,14 @@ sub new {
     
     my $self = {};
     
-    $self->{RESIDUES}         = [];
-    $self->{SITE_NUMBER}      = '';
-    $self->{EVIDENCE}         = '';
-    $self->{LITERATURE_ENTRY} = '';
+    $self->{RESIDUES}         = {};
+    $self->{SITE_NUMBER}      = undef;
+    $self->{EVIDENCE}         = undef;
+    $self->{LITERATURE_ENTRY} = undef;
     
     bless( $self, $class );
     
     return $self;
-}
-
-=head2 residues
-
-    my @residues = ( $csa_res1, $csa_res2 );
-    $csa_site->residues( \@residues );
-    
-  CSA::Site::residues gets a list of L<CSA::Residue> compliant 
-  objects as an array reference as argument for assignment. Always
-  returns the array reference or undef.
-
-=cut
-sub residues {
-    my $self          = shift;
-    my $residues_aref = shift;
-    
-    if ( defined $residues_aref ) {
-
-        ## make sure all residues are CSA::Residue compliant.
-        for my $residue_oo ( @{ $residues_aref } ) {
-            if ( $residue_oo->isa( 'CSA::Residue' ) != 1 ) {
-                confess "Error: attempting to add non-CSA::Residue ",
-                        "compliant object into CSA::Site->residues";
-            }
-        }
-
-        $self->{RESIDUES} = $residues_aref;
-    }
-
-    return $self->{RESIDUES};
-}
-
-=head2 add_residue
-
-    my $csa_res = CSA::Residue->new();
-    $csa_site->add_residue( $csa_res );
-    
-  CSA::Site::add_residue gets a L<CSA::Residue> compliant object as 
-  argument for assignment. The method will add the given CSA residue
-  to the current list of CSA residues in the CSA site. Returns 1 upon
-  success, 0 upon failure.
-
-=cut
-sub add_residue {
-    my $self       = shift;
-    my $residue_oo = shift;
-    
-    if ( ! defined $residue_oo ) {
-        confess "Error: CSA::Site->add_residue expects an argument ",
-                "for assignment.";
-    }
-
-    if ( $residue_oo->isa( 'CSA::Residue' ) != 1 ) {
-        confess "Error: CSA::Site->add_residue only takes ",
-                "CSA::Residue compliant objects for assignment.";
-    }
-
-    my $before_add_count = scalar @{ $self->{RESIDUES} };
-    push( @{ $self->{RESIDUES} }, $residue_oo );
-    my $after_add_count  = scalar @{ $self->{RESIDUES} };
-    
-    if ( $after_add_count == $before_add_count + 1 ) {
-        return 1;
-    }
-    else {
-        return 0;
-    }
 }
 
 =head2 site_number
@@ -204,6 +142,127 @@ sub literature_entry {
     }
     
     return $self->{LITERATURE_ENTRY};
+}
+
+=head2 residues
+
+    my @residues = ( $csa_res1, $csa_res2 );
+    $csa_site->residues( \@residues );
+
+  CSA::Site::residues gets a list of L<CSA::Residue> compliant 
+  objects as an array reference as argument for assignment. All 
+  residues in the array reference should have a defined Residue 
+  Number and a defined Chain ID. Residues are stored in a hash 
+  where keys are 'Residue Number'+'Chain ID' of the residues and 
+  the values are the residues themselves. Always returns the array 
+  reference (empty array if no residues have been added yet).
+
+=cut
+sub residues {
+    my $self          = shift;
+    my $residues_aref = shift;
+
+    if ( defined $residues_aref ) {
+
+        for my $res_oo ( @{ $residues_aref } ) {
+ 
+            ## make sure each residue is CSA::Residue compliant.
+            if ( $res_oo->isa( 'CSA::Residue' ) != 1 ) {
+                confess "Error: attempting to add non-CSA::Residue ",
+                        "compliant object into CSA::Site->residues";
+            }
+            
+            ## make sure the Residue Number and Chain ID are 
+            ## defined.
+            if ( defined $res_oo->residue_number 
+              && defined $res_oo->chain_id ) {
+              	my $res_id = $res_oo->residue_number 
+              	           . $res_oo->chain_id;
+                $self->{RESIDUES}{ $res_id } = $res_oo;
+            }
+            else {
+                confess "Error: attempting to add CSA::Residue ",
+                        "with no defined Residue Number and ",
+                        "Chain ID into CSA::Site->residues";
+            }
+        }
+    }
+    
+    my @residues = values %{ $self->{RESIDUES} };
+
+    return \@residues;
+}
+
+=head2 add_residue
+
+    my $csa_res = CSA::Residue->new();
+    $csa_res->residue_number( '217' );
+    $csa_res->chain_id( 'A' );
+    $csa_site->add_residue( $csa_res );
+    
+  CSA::Site::add_residue gets a L<CSA::Residue> compliant object as 
+  argument for assignment. The residue should have a defined Residue 
+  Number and a defined Chain ID. The method will add the given CSA 
+  residue to the current list of CSA residues in the CSA site. 
+  Returns 1 upon success, 0 upon failure.
+
+=cut
+sub add_residue {
+    my $self       = shift;
+    my $residue_oo = shift;
+    
+    if ( ! defined $residue_oo ) {
+        confess "Error: CSA::Site->add_residue expects an argument ",
+                "for assignment.";
+    }
+
+    if ( $residue_oo->isa( 'CSA::Residue' ) != 1 ) {
+        confess "Error: CSA::Site->add_residue only takes ",
+                "CSA::Residue compliant objects for assignment.";
+    }
+    
+    if ( ! defined $residue_oo->residue_number 
+      || ! defined $residue_oo->chain_id ) {
+        confess "Error: CSA::Site->add_residue only takes a ",
+                "CSA::Residue with defined Residue Number and ",
+                "Chain ID for assignment.";
+    }
+
+    my $before_add_count = scalar keys %{ $self->{RESIDUES} };
+    my $res_uid = $residue_oo->residue_number . $residue_oo->chain_id;
+    $self->{RESIDUES}{ $res_uid } = $residue_oo; 
+    my $after_add_count  = scalar keys %{ $self->{RESIDUES} };
+    
+    if ( $after_add_count == $before_add_count + 1 ) {
+        return 1;
+    }
+    else {
+        return 0;
+    }
+}
+
+=head2 get_residue
+
+    my $residue_id = '217A';
+    my $residue    = $csa->get_residue( $residue_id );
+    if ( defined $residue ) {
+        print "CSA site contains an entry for residue $residue_id\n";
+    }
+
+  CSA::Site::get_residue gets a Residue ID (Residue Number + Chain ID) 
+  string as argument and looks for a residue with that ID in the 
+  site. Returns the L<CSA::Residue> compliant object if it finds it 
+  or undef.
+
+=cut
+sub get_residue {
+    my $self        = shift;
+    my $res_uid = shift;
+
+    my $residue = ( exists $self->{RESIDUES}{$res_uid} ) ? 
+                  $self->{RESIDUES}{$res_uid} : undef;
+
+    return $residue;
 }
 
 =head1 AUTHOR

@@ -25,14 +25,17 @@ our $VERSION = '0.01';
     ## Create a CSA entry object.
     my $csa_entry = CSA::Entry->new();
     
-    ## Store CSA entry sites.
+    ## Store CSA entry sites (only sites with defined site number).
     $csa_entry->sites( \@sites );
 
-    ## Add site to CSA entry.
+    ## Add site to CSA entry (only sites with defined site number).
     $csa_entry->add_site( $csa_site );
     
     ## Set/Get CSA entry attributes...
     $csa_entry->pdb_id( '1ile' );
+    
+    ## Retrieve a specific site by its site number.
+    my $csa_site = $csa_entry->get_site( '0' );
     
 =head1 SUBROUTINES/METHODS
 
@@ -49,79 +52,12 @@ sub new {
     
     my $self = {};
     
-    $self->{SITES}  = [];
-    $self->{PDB_ID} = '';
+    $self->{SITES}  = {};
+    $self->{PDB_ID} = undef;
     
     bless( $self, $class );
     
     return $self;
-}
-
-=head2 sites
-
-    my @sites = ( $csa_site1, $csa_site2 );
-    $csa_entry->sites( \@sites );
-    
-  CSA::Entry::sites gets a list of L<CSA::Site> compliant objects as
-  an array reference as argument for assignment. Always returns the 
-  array reference or undef.
-
-=cut
-sub sites {
-    my $self       = shift;
-    my $sites_aref = shift;
-    
-    if ( defined $sites_aref ) {
-
-        ## make sure all sites are CSA::Site compliant.
-        for my $site_oo ( @{ $sites_aref } ) {
-            if ( $site_oo->isa( 'CSA::Site' ) != 1 ) {
-                confess "Error: attempting to add non-CSA::Site ",
-                        "compliant object into CSA::Entry->sites";
-            }
-        }
-
-        $self->{SITES} = $sites_aref;
-    }
-
-    return $self->{SITES};
-}
-
-=head2 add_site
-
-    my $csa_site = CSA::Site->new();
-    $csa_entry->add_site( $csa_site );
-    
-  CSA::Entry::add_site gets a L<CSA::Site> compliant object as 
-  argument for assignment. The method will add the given CSA site to
-  the current list of CSA sites in the CSA entry. Returns 1 upon
-  success, 0 upon failure.
-
-=cut
-sub add_site {
-    my $self    = shift;
-    my $site_oo = shift;
-    
-    if ( ! defined $site_oo ) {
-        confess "Error: CSA::Entry->add_site expects an argument ",
-                "for assignment.";
-    }
-    
-    if ( $site_oo->isa( 'CSA::Site' ) != 1 ) {
-        confess "Error: CSA::Entry->add_site only takes CSA::Site ",
-                "compliant objects for assignment.";
-    }
-    
-    my $before_add_count = scalar @{ $self->{SITES} };
-    push( @{ $self->{SITES} }, $site_oo );
-    my $after_add_count  = scalar @{ $self->{SITES} };
-    
-    if ( $after_add_count == $before_add_count + 1 ) {
-        return 1;
-    }
-    else {
-        return 0;
-    }
 }
 
 =head2 pdb_id
@@ -151,6 +87,125 @@ sub pdb_id {
     }
     
     return $self->{PDB_ID};
+}
+
+=head2 sites
+
+    my $csa_site1 = CSA::Site->new();
+    my $csa_site2 = CSA::Site->new();
+    
+    ## Add site number and other features to CSA site objects.
+    $csa_site1->site_number( '0' );
+    $csa_site2->site_number( '1' );
+    
+    my @sites = ( $csa_site1, $csa_site2 );
+    
+    $csa_entry->sites( \@sites );
+    
+  CSA::Entry::sites gets a list of L<CSA::Site> compliant objects as
+  an array reference as argument for assignment. All sites in the 
+  array reference should have defined Site Numbers. Sites are stored 
+  in a hash where keys are the Site Numbers of the sites and the 
+  values are the sites themselves. Always returns the array 
+  reference (empty array if no sites have been added yet).
+
+=cut
+sub sites {
+    my $self       = shift;
+    my $sites_aref = shift;
+    
+    if ( defined $sites_aref ) {
+
+        for my $site_oo ( @{ $sites_aref } ) {
+
+            ## make sure all sites are CSA::Site compliant.
+            if ( $site_oo->isa( 'CSA::Site' ) != 1 ) {
+                confess "Error: attempting to add non-CSA::Site ",
+                        "compliant object into CSA::Entry->sites";
+            }
+
+            ## make sure Site Number is defined.
+            if ( defined $site_oo->site_number() ) {
+                $self->{SITES}{ $site_oo->site_number() } = $site_oo;
+            }
+            else {
+                confess "Error: attempting to add CSA::Site with ",
+                        "no defined Site Number into ",
+                        "CSA::Entry->sites";
+            }
+        }
+    }
+
+    my @sites = values %{ $self->{SITES} };
+
+    return \@sites;
+}
+
+=head2 add_site
+
+    my $csa_site = CSA::Site->new();
+    $csa_site->site_number( '1' );
+    $csa_entry->add_site( $csa_site );
+    
+  CSA::Entry::add_site gets a L<CSA::Site> compliant object as 
+  argument for assignment. The site should have a defined Site 
+  Number. The method will add the given CSA site to the current 
+  list of CSA sites in the CSA entry. Returns 1 upon success, 0 
+  upon failure.
+
+=cut
+sub add_site {
+    my $self    = shift;
+    my $site_oo = shift;
+    
+    if ( ! defined $site_oo ) {
+        confess "Error: CSA::Entry->add_site expects an argument ",
+                "for assignment.";
+    }
+    
+    if ( $site_oo->isa( 'CSA::Site' ) != 1 ) {
+        confess "Error: CSA::Entry->add_site only takes CSA::Site ",
+                "compliant objects for assignment.";
+    }
+    
+    if ( ! defined $site_oo->site_number() ) {
+        confess "Error: CSA::Entry->add_site only takes a ",
+                "CSA::Site with defined Site Number for assignment.";
+    }
+    
+    my $before_add_count = scalar keys %{ $self->{SITES} };
+    $self->{SITES}{ $site_oo->site_number() } = $site_oo;
+    my $after_add_count  = scalar keys %{ $self->{SITES} };
+    
+    if ( $after_add_count == $before_add_count + 1 ) {
+        return 1;
+    }
+    else {
+        return 0;
+    }
+}
+
+=head2 get_site 
+
+    my $pdbid = '1ile';
+    my $entry = $csa->get_entry( $pdbid );
+    if ( defined $entry ) {
+        print "CSA dataset contains an entry for $pdbid\n";
+    }
+
+  CSA::Entry::get_site gets a Site Number string as argument and 
+  looks for a site with that Site Number in the entry. Returns the 
+  L<CSA::Site> compliant object if it finds it or undef.
+
+=cut
+sub get_site {
+    my $self        = shift;
+    my $site_number = shift;
+    
+    my $site = ( exists $self->{SITES}{$site_number} ) 
+             ? $self->{SITES}{$site_number} : undef;
+    
+    return $site;
 }
 
 =head1 AUTHOR

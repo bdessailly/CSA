@@ -108,6 +108,8 @@ sub read {
     my $csa_entry_oo;
     while ( my $line = $arg{'csa_filehandle'}->getline ) {
         
+        warn "#", $line, "#";
+        
         ## Save current line data.
         chomp(my @file_columns = split /,/, $line );
         my $pdb_id            = $file_columns[0];

@@ -35,12 +35,15 @@ Also, 'perldoc CSA::IO' for more details on how to use CSA::IO.
     ## Store CSA version number.
     $csa->version_number( '2.2.12' );
     
-    ## Store CSA entries.
+    ## Store CSA entries (only entries with defined PDB IDs).
     my @csa_entries = ( $csa_entry1, $csa_entry2 );
     $csa->entries( \@csa_entries );
     
-    ## Add CSA entry.
+    ## Add CSA entry (only entries with defined PDB ID).
     $csa->add_entry( $csa_entry3 );
+    
+    ## Retrieve a CSA entry from its PDB ID.
+    my $csa_entry = $csa->get_entry( '1ile' );
 
 =head1 SUBROUTINES/METHODS
 
@@ -56,48 +59,12 @@ sub new {
     
     my $self = {};
     
-    $self->{ENTRIES}        = [];
-    $self->{VERSION_NUMBER} = '';
+    $self->{ENTRIES}        = {};
+    $self->{VERSION_NUMBER} = undef;
     
     bless( $self, $class );
     
     return $self;
-}
-
-=head2 entries
-
-    my $csa_entry1 = CSA::Entry->new();
-    my $csa_entry2 = CSA::Entry->new();
-    
-    ## Add details to CSA entries.
-    
-    my @csa_entries = ( $csa_entry1, $csa_entry2 );
-    
-    $csa->entries( \@csa_entries );
-    
-  CSA::entries gets a list of L<CSA::Entry> compliant objects as an 
-  array reference as argument for assignment. Always returns the 
-  array reference or undef.
-
-=cut
-sub entries {
-    my $self         = shift;
-    my $entries_aref = shift;
-    
-    if ( defined $entries_aref ) {
-
-        ## make sure all entries are CSA::Entry compliant.
-        for my $entry_oo ( @{ $entries_aref } ) {
-            if ( $entry_oo->isa( 'CSA::Entry' ) != 1 ) {
-                confess "Error: attempting to add non-CSA::Entry ",
-                        "compliant object into CSA->entries";
-            }
-        }
-
-        $self->{ENTRIES} = $entries_aref;
-    }
-
-    return $self->{ENTRIES};
 }
 
 =head2 version_number
@@ -119,19 +86,70 @@ sub version_number {
     return $self->{VERSION_NUMBER};
 }
 
+=head2 entries
+
+    my $csa_entry1 = CSA::Entry->new();
+    my $csa_entry2 = CSA::Entry->new();
+    
+    ## Add PDB IDs and other features to CSA entries.
+    ...
+    
+    my @csa_entries = ( $csa_entry1, $csa_entry2 );
+    
+    $csa->entries( \@csa_entries );
+    
+  CSA::entries gets a list of L<CSA::Entry> compliant objects as an 
+  array reference as argument for assignment. All entries in the 
+  array reference should have defined PDB IDs. Entries are stored in 
+  a hash where keys are the PDB IDs of the entries and the values 
+  are the entries themselves. Always returns the array reference 
+  (empty array if entries have not been added yet).
+
+=cut
+sub entries {
+    my $self         = shift;
+    my $entries_aref = shift;
+    
+    if ( defined $entries_aref ) {
+
+        ## make sure all entries are CSA::Entry compliant and
+        ## that they have defined PDB IDs.
+        for my $entry_oo ( @{ $entries_aref } ) {
+            if ( $entry_oo->isa( 'CSA::Entry' ) != 1 ) {
+                confess "Error: attempting to add non-CSA::Entry ",
+                        "compliant object into CSA->entries";
+            }
+            
+            if ( defined $entry_oo->pdb_id() ) {
+                $self->{ENTRIES}{ $entry_oo->pdb_id() } = $entry_oo;
+            }
+            else {
+                confess "Error: attempting to add CSA::Entry with ",
+                        "no defined PDB ID into CSA->entries";
+            }
+        }
+    }
+
+    my @entries = values %{ $self->{ENTRIES} };
+
+    return \@entries;
+}
+
 =head2 add_entry
 
     my $csa_entry3 = CSA::Entry->new();
     
-    ## Add CSA::Entry details
+    ## Set PDB ID and other features of the CSA::Entry object.
+    $csa_entry3->pdb_id( '1ile' );
     ...
     
     $csa->add_entry( $csa_entry3 );
     
   CSA::add_entry gets a L<CSA::Entry> compliant object as argument 
-  for assignment. The method will add the given CSA entry as part of
-  the current list of CSA entries in the CSA dataset. Returns 1 upon
-  success, 0 upon failure.
+  for assignment. The entry should have its PDB ID defined. The 
+  method will add the given CSA entry as part of the current list of 
+  CSA entries in the CSA dataset. Returns 1 upon success, 0 upon 
+  failure.
 
 =cut
 sub add_entry {
@@ -148,9 +166,14 @@ sub add_entry {
                 "compliant objects for assignment.";
     }
     
-    my $before_add_count = scalar @{ $self->{ENTRIES} };
-    push( @{ $self->{ENTRIES} }, $entry_oo );
-    my $after_add_count  = scalar @{ $self->{ENTRIES} };
+    if ( ! defined $entry_oo->pdb_id() ) {
+        confess "Error: CSA->add_entry only takes a CSA::Entry ",
+                "with defined PDB ID for assignment.";
+    }
+    
+    my $before_add_count = scalar keys %{ $self->{ENTRIES} };
+    $self->{ENTRIES}{ $entry_oo->pdb_id() } = $entry_oo;
+    my $after_add_count  = scalar keys %{ $self->{ENTRIES} };
     
     if ( $after_add_count == $before_add_count + 1 ) {
         return 1;
@@ -158,6 +181,29 @@ sub add_entry {
     else {
         return 0;
     }
+}
+
+=head2 get_entry 
+
+    my $pdbid = '1ile';
+    my $entry = $csa->get_entry( $pdbid );
+    if ( defined $entry ) {
+        print "CSA dataset contains an entry for $pdbid\n";
+    }
+
+  CSA::get_entry gets a PDB ID string as argument and looks for an
+  entry with that PDB ID in the dataset. Returns the L<CSA::Entry> 
+  compliant object if it finds it or undef.
+
+=cut
+sub get_entry {
+    my $self   = shift;
+    my $pdb_id = shift;
+    
+    my $entry = ( exists $self->{ENTRIES}{$pdb_id} ) 
+              ? $self->{ENTRIES}{$pdb_id} : undef;
+    
+    return $entry;
 }
 
 =head1 AUTHOR
