@@ -1,0 +1,146 @@
+#!/usr/bin/env perl
+
+######################################################################
+##
+##    Gets a list of PDB IDs as input and output their CSA residues
+##    (Residue Position + Chain ID).
+##
+##    Created by Benoit H Dessailly, 2011-05-23.
+##    Updated, 2011-05-23.
+##
+######################################################################
+
+use strict;
+use warnings;
+
+use File::Basename;
+use File::Spec;
+use Getopt::Std;
+use IO::File;
+
+use AminoAcid::Alphabet;
+use CSA::IO;
+
+
+## Default location for CSA dataset file.
+my $csa_dataset_file = File::Spec->catfile( 
+    $ENV{HOME},
+    'data',
+    'csa',
+    'csa_latest.dat',
+);
+
+## cmd line args.
+my %arg;
+getopts( 'hi:d:o:p', \%arg );
+&help if ( defined $arg{'h'} );
+die "Pass input file with list of PDB IDs with -i\n" 
+    unless ( defined $arg{'i'} );
+die "Pass output file with -o\n" unless ( defined $arg{'o'} );
+$arg{'d'} = ( defined $arg{'d'} ) ? $arg{'d'} : $csa_dataset_file;
+my $protein_only = ( defined $arg{'p'} ) ? 1 : 0;
+
+## Read CSA dataset.
+my $csa = read_csa_dataset( $arg{'d'} ); 
+
+## Output list of CSA residues in input PDB entries.
+output_csa_residues( $arg{'i'}, $arg{'o'}, $protein_only, $csa );
+
+exit;
+
+
+######################################################################
+## Output usage message.
+sub help {
+    my $script = basename $0;
+    
+    print <<"END_USAGE";
+    
+  Usage: $script [Options]
+  
+  Options:
+  
+    -h                    Output usage message.
+    
+    -i filename           Input file with list of PDB IDs.
+                          Required
+                          
+    -d filename           CSA dataset file.
+                          Default: \${HOME}/data/csa/csa_latest.dat
+
+    -o filename           Output file name.
+                          Required
+
+    -p                    Output only CSA residues whose type is one 
+                          of the twenty regular protein amino acids.
+                          Optional
+
+  Gets a list of PDB IDs as input and output their CSA residues
+  (Residue Position + Chain ID).
+
+END_USAGE
+    
+    exit;
+}
+
+######################################################################
+## Read CSA dataset in CSA object.
+sub read_csa_dataset {
+    my $f_csa = shift;
+
+    my $csa_io = CSA::IO->new();
+    my $fh_csa = IO::File->new( $f_csa, '<' );
+    my $csa    = $csa_io->read( csa_filehandle => $fh_csa );
+
+    return $csa;
+}
+
+######################################################################
+## Read input list of PDB IDs and output CSA residues for each of 
+## them.
+sub output_csa_residues {
+    my $f_inp        = shift;
+    my $f_out        = shift;
+    my $protein_only = shift;
+    my $csa          = shift;
+    
+    my $fh_pdblist = IO::File->new( $f_inp, '<' );
+    my $fh_out     = IO::File->new( $f_out, '>' );
+    while ( my $line = $fh_pdblist->getline ) {
+        chomp( my $pdbid = $line );
+    
+        my $entry = $csa->get_entry( $pdbid );
+
+        ## Get all CSA residues.
+        my @csa_residues;
+        if ( defined $entry ) {
+            for my $site ( @{ $entry->sites } ) {
+                for my $res ( @{ $site->residues } ) {
+
+                    ## If only considering protein residues...
+                    my $is_standard 
+                        = is_aacode_standard( $res->residue_type );
+                    next if ( $protein_only && ! $is_standard );
+                    
+                    my $res_uid = $res->residue_number
+                                . $res->chain_id
+                    ;
+                    push( @csa_residues, $res_uid );
+                }
+            }
+        }
+        
+        ## Print out CSA residues.
+        if ( scalar @csa_residues > 0 ) {
+            for my $csa_res ( @csa_residues ) {
+                print $fh_out $pdbid, "\t", $csa_res, "\n";
+            }
+        }
+        else {
+            warn "No CSA residues found for $pdbid\n";
+        }
+    }
+    
+    $fh_pdblist->close;
+    $fh_out->close;
+}
