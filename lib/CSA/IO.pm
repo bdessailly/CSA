@@ -108,8 +108,6 @@ sub read {
     my $csa_entry_oo;
     while ( my $line = $arg{'csa_filehandle'}->getline ) {
         
-        warn "#", $line, "#";
-        
         ## Save current line data.
         chomp(my @file_columns = split /,/, $line );
         my $pdb_id            = $file_columns[0];
@@ -161,7 +159,7 @@ sub read {
         $csa_residue_oo->chemical_function( $chemical_function );
         $csa_residue_oo->residue_number(    $residue_number    );
         $csa_residue_oo->residue_type(      $residue_type      );
-        $csa_site_oo->add_residue( $csa_residue_oo );
+        $csa_site_oo->add_residue(          $csa_residue_oo    );
         
         ## Save data from current line to avoid duplicating entry 
         ## and site objects.

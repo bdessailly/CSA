@@ -68,8 +68,9 @@ sub new {
     
   CSA::Residue::residue_type gets the residue type string as argument
   for assignment. Always returns the residue type string or undef. 
-  The residue type must be an alphanumeric string. If that is not the
-  case, a warning is issued and the residue type is not set.
+  The residue type must be an alphanumeric string or an empty space. 
+  If that is not the case, a warning is issued and the residue type 
+  is not set.
 
 =cut
 sub residue_type {
@@ -78,8 +79,8 @@ sub residue_type {
     
     if ( defined $val ) {
         
-        ## Accepted formats are alphanumeric strings.
-        if ( $val =~ /^\w+$/ ) {
+        ## Accepted formats are alphanumeric strings or empty spaces.
+        if ( $val =~ /^\w*$/ ) {
             $self->{RESIDUE_TYPE} = $val;
         }
         else {
@@ -108,7 +109,8 @@ sub chain_id {
     
     if ( defined $val ) {
 
-        ## Accepted format is a single alphanumeric character.
+        ## Accepted format is a single alphanumeric character or an 
+        ## empty space.
         if ( $val =~ /^\w*$/ ) {
             $self->{CHAIN_ID} = $val;
         }
@@ -158,8 +160,8 @@ sub residue_number {
   CSA::Residue::chemical_function gets the chemical function string 
   as argument for assignment. Always returns the chemical function 
   string or undef. The chemical function must be a string of 
-  alphanumeric characters. If that is not the case, a warning is 
-  issued and the chemical function is not set.
+  alphanumeric characters or an empty string. If that is not the 
+  case, a warning is issued and the chemical function is not set.
 
 =cut
 sub chemical_function {
@@ -168,8 +170,9 @@ sub chemical_function {
     
     if ( defined $val ) {
         
-        ## accepted formats are alphanumeric strings.
-        if ( $val =~ /^\w+$/ ) {
+        ## accepted formats are alphanumeric strings or empty 
+        ## strings.
+        if ( $val =~ /^\w*$/ ) {
             $self->{CHEMICAL_FUNCTION} = $val;
         }
         else {

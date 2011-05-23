@@ -72,7 +72,7 @@ for my $res_num ( @res_nums ) {
 
 ## Test chemical_function attribute method.
 my @chem_funs 
-    = ( 'N', 'O', 'NO', 'S', 'SN', 'SNO', 'SO', 'X', '?', '35A', '23', 'S*' );
+    = ( 'N', 'O', 'NO', 'S', 'SN', 'SNO', 'SO', 'X', '?', '35A', '23', 'S*', '' );
 for my $chem_fun ( @chem_funs ) {
     set_chem_fun( $chem_fun );
 }
@@ -86,7 +86,7 @@ sub set_res_type {
  
     my $oo = CSA::Residue->new();
 
-    if ( $res_type =~ /^\w+$/ ) {
+    if ( $res_type =~ /^\w*$/ ) {
         $oo->residue_type( $res_type );
         is(
             $oo->residue_type(),
@@ -179,7 +179,7 @@ sub set_chem_fun {
  
     my $oo = CSA::Residue->new();
 
-    if ( $chem_fun =~ /^\w+$/ ) {
+    if ( $chem_fun =~ /^\w*$/ ) {
         $oo->chemical_function( $chem_fun );
         is(
             $oo->chemical_function(),
