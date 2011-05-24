@@ -82,8 +82,9 @@ sub help {
                           are cases in the CSA where the same residue
                           is part of several sites in the same PDB 
                           entry. Normally, such residues are printed
-                          only once in the output of $0, but this 
-                          behaviour can be changed with this option.
+                          only once in the output of $script, 
+                          but this behaviour can be changed with this 
+                          option.
                           Optional
 
   Gets a list of PDB IDs as input and output their CSA residues
