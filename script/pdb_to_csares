@@ -7,6 +7,7 @@
 ##
 ##    Created by Benoit H Dessailly, 2011-05-23.
 ##    Updated, 2011-05-23.
+##    Updated, 2011-05-24.
 ##
 ######################################################################
 
@@ -32,19 +33,20 @@ my $csa_dataset_file = File::Spec->catfile(
 
 ## cmd line args.
 my %arg;
-getopts( 'hi:d:o:p', \%arg );
+getopts( 'hi:d:o:pr', \%arg );
 &help if ( defined $arg{'h'} );
 die "Pass input file with list of PDB IDs with -i\n" 
     unless ( defined $arg{'i'} );
 die "Pass output file with -o\n" unless ( defined $arg{'o'} );
 $arg{'d'} = ( defined $arg{'d'} ) ? $arg{'d'} : $csa_dataset_file;
-my $protein_only = ( defined $arg{'p'} ) ? 1 : 0;
+my $protein_only       = ( defined $arg{'p'} ) ? 1 : 0;
+my $redundancy_allowed = ( defined $arg{'r'} ) ? 1 : 0;
 
 ## Read CSA dataset.
 my $csa = read_csa_dataset( $arg{'d'} ); 
 
 ## Output list of CSA residues in input PDB entries.
-output_csa_residues( $arg{'i'}, $arg{'o'}, $protein_only, $csa );
+output_csa_residues( $arg{'i'}, $arg{'o'}, $protein_only, $redundancy_allowed, $csa );
 
 exit;
 
@@ -75,6 +77,15 @@ sub help {
                           of the twenty regular protein amino acids.
                           Optional
 
+    -r                    Switch to allow the same CSA residue to be
+                          printed multiple times in the output. There 
+                          are cases in the CSA where the same residue
+                          is part of several sites in the same PDB 
+                          entry. Normally, such residues are printed
+                          only once in the output of $0, but this 
+                          behaviour can be changed with this option.
+                          Optional
+
   Gets a list of PDB IDs as input and output their CSA residues
   (Residue Position + Chain ID).
 
@@ -99,10 +110,11 @@ sub read_csa_dataset {
 ## Read input list of PDB IDs and output CSA residues for each of 
 ## them.
 sub output_csa_residues {
-    my $f_inp        = shift;
-    my $f_out        = shift;
-    my $protein_only = shift;
-    my $csa          = shift;
+    my $f_inp              = shift;
+    my $f_out              = shift;
+    my $protein_only       = shift;
+    my $redundancy_allowed = shift;
+    my $csa                = shift;
     
     my $fh_pdblist = IO::File->new( $f_inp, '<' );
     my $fh_out     = IO::File->new( $f_out, '>' );
@@ -112,7 +124,7 @@ sub output_csa_residues {
         my $entry = $csa->get_entry( $pdbid );
 
         ## Get all CSA residues.
-        my @csa_residues;
+        my %csa_residues;
         if ( defined $entry ) {
             for my $site ( @{ $entry->sites } ) {
                 for my $res ( @{ $site->residues } ) {
@@ -125,15 +137,25 @@ sub output_csa_residues {
                     my $res_uid = $res->residue_number
                                 . $res->chain_id
                     ;
-                    push( @csa_residues, $res_uid );
+                    $csa_residues{ $res_uid }++;
                 }
             }
         }
         
         ## Print out CSA residues.
-        if ( scalar @csa_residues > 0 ) {
-            for my $csa_res ( @csa_residues ) {
-                print $fh_out $pdbid, "\t", $csa_res, "\n";
+        if ( scalar keys %csa_residues > 0 ) {
+            
+            if ( $redundancy_allowed ) {
+                print_csa_with_redundancy( 
+                    $fh_out, 
+                    $pdbid, 
+                    \%csa_residues 
+                );
+            }
+            else {
+                for my $csa_res ( sort keys %csa_residues ) {
+                    print $fh_out $pdbid, "\t", $csa_res, "\n";
+                }
             }
         }
         else {
@@ -143,4 +165,19 @@ sub output_csa_residues {
     
     $fh_pdblist->close;
     $fh_out->close;
+}
+
+#####################################################################
+## Print CSA residues to output and allow same residue to be printed
+## multiple times when required.
+sub print_csa_with_redundancy {
+    my $fh_out            = shift;
+    my $pdbid             = shift;
+    my $csa_residues_href = shift;
+    
+    while ( my( $csa_res, $nocc ) = each %{ $csa_residues_href } ) {
+        for ( 1..$nocc ) {
+            print $fh_out $pdbid, "\t", $csa_res, "\n";
+        }
+    }
 }
