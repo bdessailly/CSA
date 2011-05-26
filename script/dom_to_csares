@@ -2,12 +2,13 @@
 
 ######################################################################
 ##
-##    Gets a list of PDB IDs as input and output the PDB IDs together 
-##    with their CSA residues (Residue Position + Chain ID).
+##    Gets a list of Domain IDs and their boundaries as input and 
+##    output the domain IDs together with their CSA residues (Residue 
+##    Posn + Chain ID).
 ##
-##    Created by Benoit H Dessailly, 2011-05-23.
-##    Updated, 2011-05-23.
-##    Updated, 2011-05-24.
+##    Created by Benoit H Dessailly, 2011-05-25.
+##    Updated, 2011-05-25.
+##    Updated, 2011-05-26.
 ##
 ######################################################################
 
@@ -15,9 +16,7 @@ use strict;
 use warnings;
 
 use File::Basename;
-use File::Spec;
 use Getopt::Std;
-use IO::File;
 
 use AminoAcid::Alphabet;
 use CSA::IO;
@@ -35,7 +34,7 @@ my $csa_dataset_file = File::Spec->catfile(
 my %arg;
 getopts( 'hi:d:o:pr', \%arg );
 &help if ( defined $arg{'h'} );
-die "Pass input file with list of PDB IDs with -i\n" 
+die "Pass input file with list of Dom IDs and boundaries with -i\n" 
     unless ( defined $arg{'i'} );
 die "Pass output file with -o\n" unless ( defined $arg{'o'} );
 $arg{'d'} = ( defined $arg{'d'} ) ? $arg{'d'} : $csa_dataset_file;
@@ -43,10 +42,10 @@ my $protein_only       = ( defined $arg{'p'} ) ? 1 : 0;
 my $redundancy_allowed = ( defined $arg{'r'} ) ? 1 : 0;
 
 ## Read CSA dataset.
-my $csa = read_csa_dataset( $arg{'d'} ); 
+my $csa = read_csa_dataset( $arg{'d'} );
 
 ## Output list of CSA residues in input PDB entries.
-output_csa_residues( 
+output_domcsa_residues( 
     $arg{'i'}, 
     $arg{'o'}, 
     $protein_only, 
@@ -70,7 +69,8 @@ sub help {
   
     -h                    Output usage message.
     
-    -i filename           Input file with list of PDB IDs.
+    -i filename           Input file with list of domain IDs and 
+                          their boundaries.
                           Required
                           
     -d filename           CSA dataset file.
@@ -86,15 +86,15 @@ sub help {
     -r                    Switch to allow the same CSA residue to be
                           printed multiple times in the output. There 
                           are cases in the CSA where the same residue
-                          is part of several sites in the same PDB 
-                          entry. Normally, such residues are printed
-                          only once in the output of $script, 
-                          but this behaviour can be changed with this 
-                          option.
+                          is part of several sites in the same Domain. 
+                          Normally, such residues are printed only 
+                          once in the output of $script, but this 
+                          behaviour can be changed with this option.
                           Optional
 
-  Gets a list of PDB IDs as input and output their CSA residues
-  (Residue Position + Chain ID).
+  Gets a list of Domain IDs and their boundaries as input and output 
+  the domain IDs together with their CSA residues (Residue Position + 
+  Chain ID).
 
 END_USAGE
     
@@ -114,22 +114,30 @@ sub read_csa_dataset {
 }
 
 ######################################################################
-## Read input list of PDB IDs and output CSA residues for each of 
-## them.
-sub output_csa_residues {
+## Read input list of Domain IDs/boundaries and output CSA residues 
+## for each of them.
+sub output_domcsa_residues {
     my $f_inp              = shift;
     my $f_out              = shift;
     my $protein_only       = shift;
     my $redundancy_allowed = shift;
     my $csa                = shift;
     
-    my $fh_pdblist = IO::File->new( $f_inp, '<' );
+    my $fh_domlist = IO::File->new( $f_inp, '<' );
     my $fh_out     = IO::File->new( $f_out, '>' );
-    while ( my $line = $fh_pdblist->getline ) {
-        chomp( my $pdbid = $line );
-    
-        my $entry = $csa->get_entry( $pdbid );
+    while ( my $line = $fh_domlist->getline ) {
+        
+        if ( $line !~ /^\S+\t\S+$/ ) {
+            die "Error: unexpected line format in $f_inp\n",
+                "#$line#\n";  
+        }
+        
+        my ($domid,$boundaries) = split /\t/, $line;
+        my $pdbid = substr($domid,0,4);
+        my $chid  = substr($domid,4,1);
 
+        my $entry = $csa->get_entry( $pdbid );
+    
         ## Get all CSA residues.
         my %csa_residues;
         if ( defined $entry ) {
@@ -141,10 +149,24 @@ sub output_csa_residues {
                         = is_aacode_standard( $res->residue_type );
                     next if ( $protein_only && ! $is_standard );
                     
-                    my $res_uid = $res->residue_number
-                                . $res->chain_id
-                    ;
-                    $csa_residues{ $res_uid }++;
+                    ## Check if residue is part of the right chain.
+                    next if ( $res->chain_id ne $chid );
+
+                    ## Check if residue is within domain boundaries.
+                    for my $segment ( split /,/, $boundaries ) {
+                        if ( $segment =~ /^(-*\w+)-(-*\w+)$/ ) {
+                            my $start = $1;
+                            my $stop  = $2;
+                            if ( $res->residue_number >= $start 
+                              && $res->residue_number <= $stop ) {
+                                my $res_uid = $res->residue_number
+                                            . $res->chain_id;
+                                $csa_residues{ $res_uid }++;
+                                last;
+                            } 
+                        }
+                    }
+
                 }
             }
         }
@@ -155,22 +177,22 @@ sub output_csa_residues {
             if ( $redundancy_allowed ) {
                 print_csa_with_redundancy( 
                     $fh_out, 
-                    $pdbid, 
+                    $domid, 
                     \%csa_residues 
                 );
             }
             else {
                 for my $csa_res ( sort keys %csa_residues ) {
-                    print $fh_out $pdbid, "\t", $csa_res, "\n";
+                    print $fh_out $domid, "\t", $csa_res, "\n";
                 }
             }
         }
         else {
-            warn "No CSA residues found for $pdbid\n";
+            warn "No CSA residues found for $domid\n";
         }
     }
     
-    $fh_pdblist->close;
+    $fh_domlist->close;
     $fh_out->close;
 }
 
