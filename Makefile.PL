@@ -11,6 +11,7 @@ requires 'Test::Exception'     => '0.29';
 requires 'AminoAcid::Alphabet' => '0.02';
 
 install_script 'pdb_to_csares';
+install_script 'dom_to_csares';
 
 auto_install;
 
