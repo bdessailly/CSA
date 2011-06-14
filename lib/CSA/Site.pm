@@ -99,7 +99,8 @@ sub site_number {
   CSA::Site::evidence gets the site evidence string as argument for
   assignment. Always returns the site evidence string or undef. No 
   verification is performed on the contents of the site evidence 
-  string but standard values would be 'PSIBLAST' or 'LITERATURE'.
+  string but standard values would be 'PSIBLAST' or 'LIT' (for 
+  literature).
 
 =cut
 sub evidence {

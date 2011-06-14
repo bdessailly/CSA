@@ -33,7 +33,7 @@ my $csa_dataset_file = File::Spec->catfile(
 
 ## cmd line args.
 my %arg;
-getopts( 'hi:d:o:pr', \%arg );
+getopts( 'hi:d:o:prl', \%arg );
 &help if ( defined $arg{'h'} );
 die "Pass input file with list of PDB IDs with -i\n" 
     unless ( defined $arg{'i'} );
@@ -41,6 +41,7 @@ die "Pass output file with -o\n" unless ( defined $arg{'o'} );
 $arg{'d'} = ( defined $arg{'d'} ) ? $arg{'d'} : $csa_dataset_file;
 my $protein_only       = ( defined $arg{'p'} ) ? 1 : 0;
 my $redundancy_allowed = ( defined $arg{'r'} ) ? 1 : 0;
+my $literature_only    = ( defined $arg{'l'} ) ? 1 : 0;
 
 ## Read CSA dataset.
 my $csa = read_csa_dataset( $arg{'d'} ); 
@@ -51,6 +52,7 @@ output_csa_residues(
     $arg{'o'}, 
     $protein_only, 
     $redundancy_allowed, 
+    $literature_only,
     $csa 
 );
 
@@ -81,6 +83,12 @@ sub help {
 
     -p                    Output only CSA residues whose type is one 
                           of the twenty regular protein amino acids.
+                          Optional
+
+    -l                    Output only CSA residues that are part of 
+                          a site identified by literature search 
+                          (i.e. exclude all sites identified by 
+                          PSI-Blast comparison).
                           Optional
 
     -r                    Switch to allow the same CSA residue to be
@@ -121,6 +129,7 @@ sub output_csa_residues {
     my $f_out              = shift;
     my $protein_only       = shift;
     my $redundancy_allowed = shift;
+    my $literature_only    = shift;
     my $csa                = shift;
     
     my $fh_pdblist = IO::File->new( $f_inp, '<' );
@@ -134,6 +143,13 @@ sub output_csa_residues {
         my %csa_residues;
         if ( defined $entry ) {
             for my $site ( @{ $entry->sites } ) {
+
+                ## If only considering literature-based sites...
+                next if ( 
+                       $literature_only 
+                    && ( $site->evidence ne 'LIT' ) 
+                );
+
                 for my $res ( @{ $site->residues } ) {
 
                     ## If only considering protein residues...
