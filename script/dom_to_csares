@@ -32,7 +32,7 @@ my $csa_dataset_file = File::Spec->catfile(
 
 ## cmd line args.
 my %arg;
-getopts( 'hi:d:o:prl', \%arg );
+getopts( 'hi:d:o:vprl', \%arg );
 &help if ( defined $arg{'h'} );
 die "Pass input file with list of Dom IDs and boundaries with -i\n" 
     unless ( defined $arg{'i'} );
@@ -41,8 +41,10 @@ $arg{'d'} = ( defined $arg{'d'} ) ? $arg{'d'} : $csa_dataset_file;
 my $protein_only       = ( defined $arg{'p'} ) ? 1 : 0;
 my $redundancy_allowed = ( defined $arg{'r'} ) ? 1 : 0;
 my $literature_only    = ( defined $arg{'l'} ) ? 1 : 0;
+my $verbose            = ( defined $arg{'v'} ) ? 1 : 0;
 
 ## Read CSA dataset.
+print "Reading CSA dataset...\n" if ( $verbose );
 my $csa = read_csa_dataset( $arg{'d'} );
 
 ## Output list of CSA residues in input PDB entries.
@@ -52,7 +54,8 @@ output_domcsa_residues(
     $protein_only, 
     $redundancy_allowed,
     $literature_only,
-    $csa 
+    $csa,
+    $verbose,
 );
 
 exit;
@@ -100,6 +103,9 @@ sub help {
                           behaviour can be changed with this option.
                           Optional
 
+    -v                    Verbosity.
+                          Optional
+
   Gets a list of Domain IDs and their boundaries as input and output 
   the domain IDs together with their CSA residues (Residue Position + 
   Chain ID).
@@ -131,6 +137,7 @@ sub output_domcsa_residues {
     my $redundancy_allowed = shift;
     my $literature_only    = shift;
     my $csa                = shift;
+    my $verbose            = shift;
     
     my $fh_domlist = IO::File->new( $f_inp, '<' );
     my $fh_out     = IO::File->new( $f_out, '>' );
@@ -144,6 +151,8 @@ sub output_domcsa_residues {
         my ($domid,$boundaries) = split /\t/, $line;
         my $pdbid = substr($domid,0,4);
         my $chid  = substr($domid,4,1);
+        
+        print "Checking input domain $domid...\n" if ( $verbose );
 
         my $entry = $csa->get_entry( $pdbid );
     
@@ -173,8 +182,21 @@ sub output_domcsa_residues {
                         if ( $segment =~ /^(-*\w+)-(-*\w+)$/ ) {
                             my $start = $1;
                             my $stop  = $2;
-                            if ( $res->residue_number >= $start 
-                              && $res->residue_number <= $stop ) {
+                            
+                            ## For cases where the start or stop 
+                            ## position string ends with a letter,
+                            ## e.g. '67A' or '372P'.
+                            my $start_digit = $start;
+                            if ( $start_digit =~ /^(\d+)\D{1}$/ ) {
+                                $start_digit = $1;
+                            }
+                            my $stop_digit = $stop;
+                            if ( $stop_digit =~ /^(\d+)\D{1}$/ ) {
+                                $stop_digit = $1;
+                            }
+
+                            if ( $res->residue_number >= $start_digit 
+                              && $res->residue_number <= $stop_digit ) {
                                 my $res_uid = $res->residue_number
                                             . $res->chain_id;
                                 $csa_residues{ $res_uid }++;
@@ -204,7 +226,8 @@ sub output_domcsa_residues {
             }
         }
         else {
-            warn "No CSA residues found for $domid\n";
+            print "No CSA residues found for $domid\n" 
+                if ( $verbose );
         }
     }
     
