@@ -33,7 +33,7 @@ my $csa_dataset_file = File::Spec->catfile(
 
 ## cmd line args.
 my %arg;
-getopts( 'hi:d:o:prl', \%arg );
+getopts( 'hi:d:o:prlv:', \%arg );
 &help if ( defined $arg{'h'} );
 die "Pass input file with list of PDB IDs with -i\n" 
     unless ( defined $arg{'i'} );
@@ -42,11 +42,17 @@ $arg{'d'} = ( defined $arg{'d'} ) ? $arg{'d'} : $csa_dataset_file;
 my $protein_only       = ( defined $arg{'p'} ) ? 1 : 0;
 my $redundancy_allowed = ( defined $arg{'r'} ) ? 1 : 0;
 my $literature_only    = ( defined $arg{'l'} ) ? 1 : 0;
+my $verbose            = ( defined $arg{'v'} ) ? 1 : 0;
 
 ## Read CSA dataset.
+if ( ! -e $arg{'d'} ) {
+    die "Cannot find CSA dataset file $arg{'d'}!\n";
+}
+print "Reading CSA dataset...\n" if ( $verbose );
 my $csa = read_csa_dataset( $arg{'d'} ); 
 
 ## Output list of CSA residues in input PDB entries.
+print "Printing out CSA residues to file...\n" if ( $verbose );
 output_csa_residues( 
     $arg{'i'}, 
     $arg{'o'}, 
@@ -99,6 +105,9 @@ sub help {
                           only once in the output of $script, 
                           but this behaviour can be changed with this 
                           option.
+                          Optional
+
+    -v                    Verbosity.
                           Optional
 
   Gets a list of PDB IDs as input and output their CSA residues

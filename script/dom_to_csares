@@ -45,6 +45,9 @@ my $verbose            = ( defined $arg{'v'} ) ? 1 : 0;
 
 ## Read CSA dataset.
 print "Reading CSA dataset...\n" if ( $verbose );
+if ( ! -e $arg{'d'} ) {
+    die "Cannot find CSA dataset file $arg{'d'}!\n";
+}
 my $csa = read_csa_dataset( $arg{'d'} );
 
 ## Output list of CSA residues in input PDB entries.
