@@ -8,6 +8,7 @@
 ##    Created by Benoit H Dessailly, 2011-05-23.
 ##    Updated, 2011-05-23.
 ##    Updated, 2011-05-24.
+##    Updated, 2011-09-09.
 ##
 ######################################################################
 
@@ -33,7 +34,7 @@ my $csa_dataset_file = File::Spec->catfile(
 
 ## cmd line args.
 my %arg;
-getopts( 'hi:d:o:prlv:', \%arg );
+getopts( 'hi:d:o:prlv', \%arg );
 &help if ( defined $arg{'h'} );
 die "Pass input file with list of PDB IDs with -i\n" 
     unless ( defined $arg{'i'} );
