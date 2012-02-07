@@ -55,7 +55,11 @@ TO DO
     may sometimes be the same for different residues (although I 
     don't know of specific examples of this potentially more 
     problematic situation). Using alignment would be safer but also 
-    would take a longer time.  
+    would take a longer time.
+    
+  + Script dom_to_csares, especially function output_domcsa_residues
+    is becoming a bit difficult to follow. Might be good to 
+    subdivide some of the code into separate functions.
 
 LICENSE AND COPYRIGHT
 
