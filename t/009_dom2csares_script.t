@@ -6,6 +6,7 @@
 ##
 ##    Created by Benoit H Dessailly, 2011-05-25.
 ##    Updated, 2011-05-25.
+##    Updated, 2012-02-07.
 ##
 ######################################################################
 
@@ -16,22 +17,29 @@ use File::Basename;
 use File::Spec;
 use FindBin qw( $Bin );
 use IO::File;
-use Test::More tests => 49;
+use Test::More tests => 50;
 
 use lib "${Bin}/../lib";
 
 ## Test directory t/.
 my $t_dir = $Bin;
 
+## Root test data directory t/data.
+my $d_data = File::Spec->catfile( $t_dir, 'data' );
+
 ## Script directory.
-my $script_dir = File::Spec->catfile( $t_dir, '..', 'script' );
-my $script = File::Spec->catfile( $script_dir, 'dom_to_csares' );
+my $script = File::Spec->catfile( 
+    $t_dir, '..', 'script', 'dom_to_csares' 
+);
 
 ## CSA dataset file.
-my $f_csa = File::Spec->catfile( $t_dir, 'data', 'csa_2_2_12_subset4.dat', );
+my $f_csa = File::Spec->catfile( $d_data, 'csa_2_2_12_subset4.dat', );
 
 ## Tests.
 test_dom_to_csares( $t_dir, $script, $f_csa );
+
+## Test option to pass file with equivalent PDB chains (option -e).
+test_equivalent_pdbchains( $script, $d_data );
 
 exit;
 
@@ -146,4 +154,69 @@ sub test_dom_to_csares {
     );
 
     unlink $f_domcsa or die "Cannot unlink $f_domcsa: $!";
+}
+
+#####################################################################
+## Test option -e of script dom_to_csares. Option -e is used to pass 
+## a file with a list of equivalent PDB chains for each query domain 
+## in the input file. 
+sub test_equivalent_pdbchains {
+    my $script = shift;
+    my $d_data = shift;
+    
+    ## Input file with list of domain IDs.
+    my $f_domids = File::Spec->catfile( 
+        $d_data, 'set2', 'domid_boundaries.dat',
+    );
+    
+    ## Input file with equivalent PDB chains.
+    my $f_equiv = File::Spec->catfile(
+        $d_data, 'set2', 'domid_pdbchains.dat',
+    );
+    
+    ## CSA dataset file.
+    my $f_csa = File::Spec->catfile(
+        $d_data, 'set2', 'csa_2_2_12_subset.dat',
+    );
+    
+    ## Observed output file.
+    my $f_out_obs = File::Spec->catfile(
+        $d_data, 'set2', 'obs-dom_csares.dat',
+    );
+    
+    ## Run script.
+    system $script, '-i', $f_domids, '-d', $f_csa, 
+                    '-e', $f_equiv,  '-o', $f_out_obs, 
+                    '-l';
+    
+    ## Expected output file.
+    my $f_out_exp = File::Spec->catfile(
+        $d_data, 'set2', 'exp-dom_csares.dat',
+    );
+    
+    ## Read contents of observed output file.
+    my $obs_out_str = '';
+    my $fh_out_obs = IO::File->new( $f_out_obs, '<' );
+    while ( my $line = $fh_out_obs->getline ) {
+        $obs_out_str .= $line;
+    }
+    $fh_out_obs->close;
+    
+    ## Read contents of expected output file.
+    my $exp_out_str = '';
+    my $fh_out_exp = IO::File->new( $f_out_exp, '<' );
+    while ( my $line = $fh_out_exp->getline ) {
+        $exp_out_str .= $line;
+    }
+    $fh_out_exp->close;
+    
+    ## Compare contents of observed and expected output files.
+    is(
+        $obs_out_str,
+        $exp_out_str,
+        'Output as expected with dom_to_csares and option -e.',
+    );
+    
+    ## Delete observed output file.
+    unlink $f_out_obs or die "Cannot unlink $f_out_obs: $!";
 }

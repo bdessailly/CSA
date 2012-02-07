@@ -42,6 +42,20 @@ You can also look for information at:
     Search CPAN
         http://search.cpan.org/dist/CSA/
 
+TO DO
+
+  + Change code so that equivalent positions between equivalent 
+    domains (see option -e of script dom_to_csares) are transferred 
+    based on alignments of the equivalent domains, rather than 
+    simply on residue position strings from the PDB files as it is 
+    done at the moment. In a few cases, this is risky behaviour as 
+    residue positions can sometimes be different for equivalent 
+    residues in different PDB entries (e.g. 1004 in one PDB entry 
+    would be equivalent to 4 in another PDB equivalent entry), and 
+    may sometimes be the same for different residues (although I 
+    don't know of specific examples of this potentially more 
+    problematic situation). Using alignment would be safer but also 
+    would take a longer time.  
 
 LICENSE AND COPYRIGHT
 

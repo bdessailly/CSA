@@ -9,6 +9,7 @@
 ##    Created by Benoit H Dessailly, 2011-05-25.
 ##    Updated, 2011-05-25.
 ##    Updated, 2011-05-26.
+##    Updated, 2012-02-07.
 ##
 ######################################################################
 
@@ -17,6 +18,7 @@ use warnings;
 
 use File::Basename;
 use Getopt::Std;
+use IO::File;
 
 use AminoAcid::Alphabet;
 use CSA::IO;
@@ -32,7 +34,7 @@ my $csa_dataset_file = File::Spec->catfile(
 
 ## cmd line args.
 my %arg;
-getopts( 'hi:d:o:vprl', \%arg );
+getopts( 'hd:e:i:o:vprl', \%arg );
 &help if ( defined $arg{'h'} );
 die "Pass input file with list of Dom IDs and boundaries with -i\n" 
     unless ( defined $arg{'i'} );
@@ -42,6 +44,7 @@ my $protein_only       = ( defined $arg{'p'} ) ? 1 : 0;
 my $redundancy_allowed = ( defined $arg{'r'} ) ? 1 : 0;
 my $literature_only    = ( defined $arg{'l'} ) ? 1 : 0;
 my $verbose            = ( defined $arg{'v'} ) ? 1 : 0;
+my $f_equiv            = ( defined $arg{'e'} ) ? $arg{'e'} : undef;
 
 ## Read CSA dataset.
 print "Reading CSA dataset...\n" if ( $verbose );
@@ -49,6 +52,15 @@ if ( ! -e $arg{'d'} ) {
     die "Cannot find CSA dataset file $arg{'d'}!\n";
 }
 my $csa = read_csa_dataset( $arg{'d'} );
+
+## Read file with equivalent PDB chains.
+my $domid_equivpdbchains_href;
+if ( $f_equiv ) {
+    print "Reading file with equivalent chains...\n"
+        if ( $verbose );
+    $domid_equivpdbchains_href 
+        = read_equivalent_pdbchains_file( $f_equiv );
+}
 
 ## Output list of CSA residues in input PDB entries.
 output_domcsa_residues( 
@@ -58,6 +70,7 @@ output_domcsa_residues(
     $redundancy_allowed,
     $literature_only,
     $csa,
+    $domid_equivpdbchains_href,
     $verbose,
 );
 
@@ -106,6 +119,17 @@ sub help {
                           behaviour can be changed with this option.
                           Optional
 
+    -e filename           Consider equivalent PDB chains when looking
+                          for CSA residues of query domains. A file 
+                          should be provided that lists the 
+                          equivalent PDB chains for each query domain 
+                          in the input file. The format of this file 
+                          is tab-delimited, with query domains listed
+                          in the first column, and a comma-separated
+                          list of equivalent PDB chains provided in 
+                          the 2nd column.
+                          Optional
+
     -v                    Verbosity.
                           Optional
 
@@ -131,16 +155,40 @@ sub read_csa_dataset {
 }
 
 ######################################################################
+## Read optional file that maps query domain IDs to their equivalent 
+## PDB chains.
+sub read_equivalent_pdbchains_file {
+    my $f_equiv = shift;
+    
+    my %domid_pdbchains;
+    
+    my $fh_equiv = IO::File->new( $f_equiv, '<' );
+    while ( my $line = $fh_equiv->getline ) {
+        chomp $line;
+        
+        my ( $domid, $pdbchains ) = split /\s+/, $line; ##++
+        
+        for my $pdbchain ( split /,/, $pdbchains ) { #/
+            $domid_pdbchains{ $domid }{ $pdbchain }++;
+        }
+    }
+    $fh_equiv->close;
+    
+    return \%domid_pdbchains;
+}
+
+######################################################################
 ## Read input list of Domain IDs/boundaries and output CSA residues 
 ## for each of them.
 sub output_domcsa_residues {
-    my $f_inp              = shift;
-    my $f_out              = shift;
-    my $protein_only       = shift;
-    my $redundancy_allowed = shift;
-    my $literature_only    = shift;
-    my $csa                = shift;
-    my $verbose            = shift;
+    my $f_inp                     = shift;
+    my $f_out                     = shift;
+    my $protein_only              = shift;
+    my $redundancy_allowed        = shift;
+    my $literature_only           = shift;
+    my $csa                       = shift;
+    my $domid_equivpdbchains_href = shift;
+    my $verbose                   = shift;
     
     my $fh_domlist = IO::File->new( $f_inp, '<' );
     my $fh_out     = IO::File->new( $f_out, '>' );
@@ -152,62 +200,86 @@ sub output_domcsa_residues {
         }
         
         my ($domid,$boundaries) = split /\t/, $line;
-        my $pdbid = substr($domid,0,4);
-        my $chid  = substr($domid,4,1);
         
-        print "Checking input domain $domid...\n" if ( $verbose );
-
-        my $entry = $csa->get_entry( $pdbid );
-    
-        ## Get all CSA residues.
+        print "Processing query domain $domid\n" if ( $verbose );
+        
+        ## Put query domid and its PDB chain ID into the hash that 
+        ## maps domain IDs to their equivalent PDB chain IDs. It 
+        ## does not matter if option -e is not in use and the hash 
+        ## is empty.
+        $domid_equivpdbchains_href->{$domid}{substr($domid,0,5)}++;
+                
         my %csa_residues;
-        if ( defined $entry ) {
-            for my $site ( @{ $entry->sites } ) {
+        
+        ## For each PDB ID that is equivalent to that of the query 
+        ## domain (including the PDB ID of the query domain itself).
+        for my $equiv_pdbchainid 
+            ( keys %{ $domid_equivpdbchains_href->{$domid} } ) {
+            
+            print "  Processing equiv. chain $equiv_pdbchainid\n" 
+                if ( $verbose );
+            
+            my $entry 
+                = $csa->get_entry( substr($equiv_pdbchainid,0,4) );
+    
+            ## Get all CSA residues.
+            if ( defined $entry ) {
                 
-                ## If only considering literature-based sites...
-                next if ( 
-                       $literature_only 
-                    && ( $site->evidence ne 'LIT' ) 
-                );
+                print "    Found CSA entry.\n" if ( $verbose );
                 
-                for my $res ( @{ $site->residues } ) {
+                for my $site ( @{ $entry->sites } ) {
+                
+                    ## If only considering literature-based sites...
+                    next if ( 
+                           $literature_only 
+                        && ( $site->evidence ne 'LIT' ) 
+                    );
+                
+                    for my $res ( @{ $site->residues } ) {
 
-                    ## If only considering protein residues...
-                    my $is_standard 
-                        = is_aacode_standard( $res->residue_type );
-                    next if ( $protein_only && ! $is_standard );
+                        ## If only considering protein residues...
+                        my $is_standard = is_aacode_standard( 
+                            $res->residue_type 
+                        );
+                        next if ( $protein_only && ! $is_standard );
                     
-                    ## Check if residue is part of the right chain.
-                    next if ( $res->chain_id ne $chid );
+                        ## Check if residue is part of the right 
+                        ## chain.
+                        next if ( 
+                               $res->chain_id 
+                            ne substr( $equiv_pdbchainid,4,1) 
+                        );
 
-                    ## Check if residue is within domain boundaries.
-                    for my $segment ( split /,/, $boundaries ) {
-                        if ( $segment =~ /^(-*\w+)-(-*\w+)$/ ) {
-                            my $start = $1;
-                            my $stop  = $2;
+                        ## Check if residue is within domain 
+                        ## boundaries.
+                        for my $segment ( split /,/, $boundaries ) {
+                            if ( $segment =~ /^(-*\w+)-(-*\w+)$/ ) {
+                                my $start = $1;
+                                my $stop  = $2;
                             
-                            ## For cases where the start or stop 
-                            ## position string ends with a letter,
-                            ## e.g. '67A' or '372P'.
-                            my $start_digit = $start;
-                            if ( $start_digit =~ /^(\d+)\D{1}$/ ) {
-                                $start_digit = $1;
-                            }
-                            my $stop_digit = $stop;
-                            if ( $stop_digit =~ /^(\d+)\D{1}$/ ) {
-                                $stop_digit = $1;
-                            }
+                                ## For cases where the start or stop 
+                                ## position string ends with a letter,
+                                ## e.g. '67A' or '372P'.
+                                my $start_digit = $start;
+                                if ( $start_digit =~ /^(\d+)\D{1}$/ ) {
+                                    $start_digit = $1;
+                                }
+                                my $stop_digit = $stop;
+                                if ( $stop_digit =~ /^(\d+)\D{1}$/ ) {
+                                    $stop_digit = $1;
+                                }
 
-                            if ( $res->residue_number >= $start_digit 
-                              && $res->residue_number <= $stop_digit ) {
-                                my $res_uid = $res->residue_number
-                                            . $res->chain_id;
-                                $csa_residues{ $res_uid }++;
-                                last;
-                            } 
+                                if ( $res->residue_number >= $start_digit 
+                                  && $res->residue_number <= $stop_digit ) {
+                                    my $res_uid = $res->residue_number
+                                                . substr($domid,4,1);
+                                    $csa_residues{ $res_uid }++;
+                                    
+                                    last;
+                                } 
+                            }
                         }
                     }
-
                 }
             }
         }
